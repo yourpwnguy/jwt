@@ -1,4 +1,4 @@
-# JWT Tool 🚀
+9# JWT Tool 🚀
 
 This is a command-line tool for decoding JSON Web Tokens (JWTs). It allows you to decode and inspect JWT tokens either provided directly as strings or stored in files.
 
@@ -90,7 +90,7 @@ Token 2:
 
 ## But Why Use Our Tool❓ 
 
-We understand and appreciate that jwt.io provides a web-based solution for decoding JWT tokens, however our CLI tool offers the advantage of offline decoding. By keeping your tokens local, there's no risk of sensitive information landing in a website's database, ensuring your data remains secure and private. Yes, we are talking about you privacy-conscious users.
+We understand and appreciate that jwt.io provides a web-based solution for decoding JWT tokens, however our CLI tool offers the advantage of decoding offline. By keeping your tokens local, there's no risk of sensitive information landing in a website's database, ensuring your data remains secure and private. Yes, we are talking about you privacy-conscious users.
 
 ## Contributing 🤝
 
