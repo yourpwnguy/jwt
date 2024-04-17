@@ -19,13 +19,11 @@ go install "github.com/iaakanshff/jwt@latest"
 ```bash
 Usage: jwt [options]
 
-Default flags:
-  -t string
-        JWT token string
+Options: [flag] [argument] [Description]
 
-Optional flags:
-  -f FILE
-        File containing JWT tokens
+  -t string     JWT token string to decode
+  -f FILE       File containing JWT tokens
+  -v none       Check current version
 ```
 
 ## Examples 📄
