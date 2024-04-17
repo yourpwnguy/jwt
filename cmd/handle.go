@@ -21,8 +21,7 @@ type tokenInfo struct {
 func ParseFile(fn string) ([]string, error) {
 	f, err := os.Open(fn)
 	if err != nil {
-		fmt.Print("[-] File provided not found\n")
-		return nil, err
+		return nil, fmt.Errorf("[-] File provided not found\n")
 	}
 	defer f.Close()
 
