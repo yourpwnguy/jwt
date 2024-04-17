@@ -1,4 +1,4 @@
-9# JWT Tool 🚀
+## JWT Tool 🚀
 
 This is a command-line tool for decoding JSON Web Tokens (JWTs). It allows you to decode and inspect JWT tokens either provided directly as strings or stored in files.
 
