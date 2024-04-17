@@ -13,7 +13,7 @@ To install the JWT tool, you can simply use the following command.
 
 ```bash
 go install "github.com/iaakanshff/jwt@latest"
-sudo cp ~/go/bin/seek /bin/
+sudo cp ~/go/bin/jwt /bin/
 ```
 ## Usage 📝
 
