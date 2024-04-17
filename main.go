@@ -74,7 +74,7 @@ func main() {
 	for i, tn := range tokens {
 		tokenInfoJSON, err := cmd.ParseTokenInfo(tn)
 		if err != nil {
-			fmt.Printf("Token %d: %v\n\n", i+1, err)
+			fmt.Printf("[-] Token %d: %v\n\n", i+1, err)
 			continue
 		}
 		fmt.Printf("Token %d:\n%s\n\n", i+1, tokenInfoJSON)
