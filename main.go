@@ -61,7 +61,7 @@ func main() {
 	if flags.File != "" {
 		fTok, err := cmd.ParseFile(flags.File)
 		if err != nil {
-			fmt.Println("[-] Error reading tokens from file:", err)
+			fmt.Println(err)
 			return
 		}
 		tokens = append(tokens, fTok...)
