@@ -26,10 +26,10 @@ func main() {
 	// Customize usage message
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "\nUsage: jwt [options]\n\n")
-		fmt.Fprintf(os.Stderr, "Default flags:\n")
-		fmt.Fprintf(os.Stderr, "  -t string\n\tJWT token string\n")
-		fmt.Fprintf(os.Stderr, "\nOptional flags:\n")
-		fmt.Fprintf(os.Stderr, "  -f FILE\n\tFile containing JWT tokens\n")
+		fmt.Fprintf(os.Stderr, "Options: [flag] [argument] [Description]\n\n")
+		fmt.Fprintf(os.Stderr, "  -t string\tJWT token string to decode\n")
+		fmt.Fprintf(os.Stderr, "  -f FILE\tFile containing JWT tokens\n")
+		fmt.Fprintf(os.Stderr, "  -v none\tCheck current version\n")
 	}
 
 	flag.Parse()
