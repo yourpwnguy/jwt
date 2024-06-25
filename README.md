@@ -1,6 +1,6 @@
 <div align="center">
 
-![GoStyle LOGO](https://i.imgur.com/69aPTml.png)
+![GoStyle LOGO](https://i.imgur.com/YcATkTY.png)
 
 </div>
 <h4 align="center">Simple, fast, and efficient tool for decoding JWT tokens, supporting base64 and JSON Web Token (JWT) formats..</h4>
