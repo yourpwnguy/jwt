@@ -57,7 +57,7 @@ func ParseOptions() (Options, error) {
 	}
 	// Checking if neither token nor file is provided
 	if options.Token == "" && options.File == "" {
-		fmt.Println(Errfix, "Nor token or token file is provided")
+		fmt.Println(Errfix, "Neither token nor token file is provided")
 		return options, fmt.Errorf("")
 	}
 
