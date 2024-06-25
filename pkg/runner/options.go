@@ -53,7 +53,7 @@ func ParseOptions() (Options, error) {
 	// Printing the current version if set
 	if options.Version {
 		CheckVersion()
-		os.Exit(1)
+		os.Exit(0)
 	}
 	// Checking if neither token nor file is provided
 	if options.Token == "" && options.File == "" {
