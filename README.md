@@ -3,7 +3,7 @@
 ![GoStyle LOGO](https://i.imgur.com/69aPTml.png)
 
 </div>
-<h4 align="center">Fast and efficient subdomain enumeration tool utilizing crt.sh to identify subdomains recursively.</h4>
+<h4 align="center">Simple, fast, and efficient tool for decoding JWT tokens, supporting base64 and JSON Web Token (JWT) formats..</h4>
 <p align="center">
 <img src="https://img.shields.io/github/go-mod/go-version/iaakanshff/crtfinder">
 <!-- <a href="https://github.com/iaakanshff/crtfinder/releases"><img src="https://img.shields.io/github/downloads/iaakanshff/crtfinder/total"> -->
