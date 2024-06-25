@@ -1,2 +1,4 @@
 github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
 github.com/dgrijalva/jwt-go v3.2.0+incompatible/go.mod h1:E3ru+11k8xSBh+hMPgOLZmtrrCbhqsmaPHjLKYnJCaQ=
+github.com/iaakanshff/gostyle v0.0.0-20240504173236-6dc2474d3322 h1:p4z/dkuwTzGbTikzrqy7MBvv+IrnIaFnyZdHI7f4IOo=
+github.com/iaakanshff/gostyle v0.0.0-20240504173236-6dc2474d3322/go.mod h1:3NmSjzkGRi90JtvFnyNYxIt3b27Xj/V1TYej99YRtf0=
