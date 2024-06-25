@@ -6,5 +6,5 @@ import (
 )
 
 func CheckVersion() {
-	fmt.Fprintln(os.Stderr, "Current jwt version:", g.BrGreen("v1.0"))
+	fmt.Fprintln(os.Stderr, Succfix, "Current jwt version:", g.BrGreen("v1.0"))
 }
