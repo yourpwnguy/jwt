@@ -1,6 +1,18 @@
-## JWT Tool 🚀
+<div align="center">
 
-This is a command-line tool for decoding JSON Web Tokens (JWTs). It allows you to decode and inspect JWT tokens either provided directly as strings or stored in files.
+![GoStyle LOGO](https://i.imgur.com/69aPTml.png)
+
+</div>
+<h4 align="center">Fast and efficient subdomain enumeration tool utilizing crt.sh to identify subdomains recursively.</h4>
+<p align="center">
+<img src="https://img.shields.io/github/go-mod/go-version/iaakanshff/crtfinder">
+<!-- <a href="https://github.com/iaakanshff/crtfinder/releases"><img src="https://img.shields.io/github/downloads/iaakanshff/crtfinder/total"> -->
+<a href="https://github.com/iaakanshff/crtfinder/graphs/contributors"><img src="https://img.shields.io/github/contributors-anon/iaakanshff/crtfinder">
+<!-- <a href="https://github.com/iaakanshff/crtfinder/releases/"><img src="https://img.shields.io/github/release/iaakanshff/crtfinder"> -->
+<a href="https://github.com/iaakanshff/crtfinder/issues"><img src="https://img.shields.io/github/issues-raw/iaakanshff/crtfinder">
+<a href="https://github.com/iaakanshff/crtfinder/stars"><img src="https://img.shields.io/github/stars/iaakanshff/crtfinder">
+<!-- <a href="https://github.com/iaakanshff/crtfinder/discussions"><img src="https://img.shields.io/github/discussions/iaakanshff/crtfinder"> -->
+</p>
 
 ## Features 💡
 
@@ -12,18 +24,21 @@ This is a command-line tool for decoding JSON Web Tokens (JWTs). It allows you t
 To install the JWT tool, you can simply use the following command.
 
 ```bash
-go install "github.com/iaakanshff/jwt@latest"
+go install -v "github.com/iaakanshff/jwt@latest"
 cp ~/go/bin/jwt /usr/local/bin/
 ```
 ## Usage 📝
 
-```bash
+```yaml
 Usage: jwt [options]
 
 Options: [flag] [argument] [Description]
 
+INPUT:
   -t string     JWT token string to decode
-  -f FILE       File containing JWT tokens
+  -tL FILE      File containing list of JWT tokens
+
+DEBUG:
   -v none       Check current version
 ```
 
@@ -54,7 +69,7 @@ Token 1:
 - Decode JWT tokens stored in a file:
 
 ```bash
-$ jwt -f tokens.txt
+$ jwt -tL tokens.txt
 
 Token 1:
 {
@@ -75,15 +90,48 @@ Token 2:
 {
   "header": {
     "alg": "HS256",
+    "kid": "12345",
     "typ": "JWT"
   },
   "payload": {
-    "data_key": "password",
-    "iat": 1516239022,
-    "name": "Carmin",
-    "payload": "the text of the token in token String"
+    "aud": [
+      "example.com",
+      "another-example.com"
+    ],
+    "custom_claim": "custom_value",
+    "email": "john.doe@example.com",
+    "exp": 1716239022,
+    "iat": 1616239022,
+    "iss": "example.com",
+    "jti": "unique-token-id",
+    "metadata": {
+      "device": "iPhone",
+      "ip": "192.168.1.1",
+      "location": "San Francisco"
+    },
+    "name": "John Doe",
+    "nbf": 1616239022,
+    "permissions": {
+      "admin": [
+        "read",
+        "write",
+        "delete"
+      ],
+      "user": [
+        "read"
+      ]
+    },
+    "preferences": {
+      "language": "en-US",
+      "theme": "dark"
+    },
+    "roles": [
+      "admin",
+      "user"
+    ],
+    "sub": "user123"
   },
-  "signature": "hHTLdOb-fBXZPzO4E1brpwzB2Cx28hBBRk54NWXTAAU"
+  "signature": "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 }
 
 ```
