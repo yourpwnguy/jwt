@@ -1,4 +1,4 @@
-module github.com/iaakanshff/jwt
+module github.com/yourpwnguy/jwt
 
 go 1.21.4
 
