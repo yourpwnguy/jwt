@@ -1,6 +1,6 @@
 <div align="center">
 
-![GoStyle LOGO](https://i.imgur.com/YcATkTY.png)
+![Jwt LOGO](https://i.imgur.com/YcATkTY.png)
 
 </div>
 <h4 align="center">Simple, fast, and efficient tool for decoding JWT tokens, supporting base64 and JSON Web Token (JWT) formats..</h4>
@@ -25,7 +25,9 @@ To install the JWT tool, you can simply use the following command.
 
 ```bash
 go install -v "github.com/yourpwnguy/jwt/cmd/jwt@latest"
-cp ~/go/bin/jwt /usr/local/bin/
+
+# Do the below step only if your "~/go/bin" is not in PATH
+cp ~/go/bin/refine /usr/local/bin/
 ```
 ## Usage 📝
 
