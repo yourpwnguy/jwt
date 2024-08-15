@@ -5,13 +5,13 @@
 </div>
 <h4 align="center">Simple, fast, and efficient tool for decoding JWT tokens, supporting base64 and JSON Web Token (JWT) formats..</h4>
 <p align="center">
-<img src="https://img.shields.io/github/go-mod/go-version/iaakanshff/crtfinder">
-<!-- <a href="https://github.com/iaakanshff/crtfinder/releases"><img src="https://img.shields.io/github/downloads/iaakanshff/crtfinder/total"> -->
-<a href="https://github.com/iaakanshff/crtfinder/graphs/contributors"><img src="https://img.shields.io/github/contributors-anon/iaakanshff/crtfinder">
-<!-- <a href="https://github.com/iaakanshff/crtfinder/releases/"><img src="https://img.shields.io/github/release/iaakanshff/crtfinder"> -->
-<a href="https://github.com/iaakanshff/crtfinder/issues"><img src="https://img.shields.io/github/issues-raw/iaakanshff/crtfinder">
-<a href="https://github.com/iaakanshff/crtfinder/stars"><img src="https://img.shields.io/github/stars/iaakanshff/crtfinder">
-<!-- <a href="https://github.com/iaakanshff/crtfinder/discussions"><img src="https://img.shields.io/github/discussions/iaakanshff/crtfinder"> -->
+<img src="https://img.shields.io/github/go-mod/go-version/yourpwnguy/jwt">
+<!-- <a href="https://github.com/yourpwnguy/jwt/releases"><img src="https://img.shields.io/github/downloads/yourpwnguy/jwt/total"> -->
+<a href="https://github.com/yourpwnguy/jwt/graphs/contributors"><img src="https://img.shields.io/github/contributors-anon/yourpwnguy/jwt">
+<!-- <a href="https://github.com/yourpwnguy/jwt/releases/"><img src="https://img.shields.io/github/release/yourpwnguy/jwt"> -->
+<a href="https://github.com/yourpwnguy/jwt/issues"><img src="https://img.shields.io/github/issues-raw/yourpwnguy/jwt">
+<a href="https://github.com/yourpwnguy/jwt/stars"><img src="https://img.shields.io/github/stars/yourpwnguy/jwt">
+<!-- <a href="https://github.com/yourpwnguy/jwt/discussions"><img src="https://img.shields.io/github/discussions/yourpwnguy/jwt"> -->
 </p>
 
 ## Features 💡
