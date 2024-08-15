@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/iaakanshff/jwt/pkg/runner"
+	"github.com/yourpwnguy/jwt/pkg/runner"
 )
 
 func main() {

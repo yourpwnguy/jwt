@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/iaakanshff/gostyle"
+	"github.com/yourpwnguy/gostyle"
 )
 
 // tokenoptions struct holds the options used in the program
