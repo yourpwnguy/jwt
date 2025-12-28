@@ -3,6 +3,7 @@ package version
 import (
 	"fmt"
 	"os"
+	"runtime/debug"
 
 	"github.com/yourpwnguy/gostyle"
 )
@@ -20,10 +21,31 @@ import (
 //   - "v1.0.0-dirty"           - Tagged with uncommitted changes
 //   - "v1.0.0-5-g2a3b4c5"      - 5 commits after v1.0.0 tag
 //   - "v1.0.0-5-g2a3b4c5-dirty" - Above with uncommitted changes
-var Number = "dev"
+//
+// Number holds the current version of the application.
+// Set at build time via ldflags, or detected from build info.
+var Number = ""
 
 // style provides colored terminal output.
 var style = gostyle.New()
+
+// init determines the version from available sources.
+func init() {
+	// If already set via ldflags, use that
+	if Number != "" {
+		return
+	}
+
+	// Try to get version from go install build info
+	info, ok := debug.ReadBuildInfo()
+	if ok && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		Number = info.Main.Version
+		return
+	}
+
+	// Fallback to dev
+	Number = "dev"
+}
 
 // Print outputs the current version information to stderr.
 //
