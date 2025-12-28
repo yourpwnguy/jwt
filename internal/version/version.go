@@ -35,5 +35,5 @@ var style = gostyle.New()
 func Print() {
 	prefix := "[" + style.Blue("INFO") + "]"
 	ver := style.BrGreen(Number)
-	fmt.Fprintf(os.Stderr, "%s jwt version: %s\n", prefix, ver)
+	fmt.Fprintf(os.Stderr, "%s jwt version: %s", prefix, ver)
 }
