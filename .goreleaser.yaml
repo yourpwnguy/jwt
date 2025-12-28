@@ -19,7 +19,7 @@ builds:
     binary: jwt
     ldflags:
       - -s -w
-      - -X github.com/yourpwnguy/jwt/internal/version.Number={{ .Version }}
+      - -X github.com/yourpwnguy/jwt/internal/version.Number={{ .Tag }}
     env:
       - CGO_ENABLED=0
     goos:
