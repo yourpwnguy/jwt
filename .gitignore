@@ -15,6 +15,7 @@
 go.work
 
 # Build artifacts
+/jwt
 bin/
 dist/
 build/
