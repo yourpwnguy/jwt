@@ -3,25 +3,11 @@ package jwt
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 )
 
-// Sentinel errors for JWT parsing operations.
-//
-// These errors indicate specific failure modes during token parsing.
-// They can be checked using errors.Is() and may be wrapped with
-// additional context.
-var (
-	ErrInvalidFormat    = errors.New("invalid token format")
-	ErrDecodeHeader     = errors.New("failed to decode header")
-	ErrDecodePayload    = errors.New("failed to decode payload")
-	ErrUnmarshalHeader  = errors.New("failed to unmarshal header")
-	ErrUnmarshalPayload = errors.New("failed to unmarshal payload")
-)
-
-// Token segment indices for clarity and maintainability.
+// Segment positions, named so "parts[1]" never appears in logic.
 const (
 	expectedParts = 3
 	partHeader    = 0
@@ -29,89 +15,73 @@ const (
 	partSignature = 2
 )
 
-// Parse decodes a JWT token string and returns a formatted JSON representation.
+// Parse decodes a clean JWT string into a Token.
 //
-// The function performs the following steps:
-//  1. Splits the token into its three segments
-//  2. Decodes and unmarshals the header (base64url → JSON)
-//  3. Decodes and unmarshals the payload (base64url → JSON)
-//  4. Preserves the signature as-is (it's binary, not JSON)
-//  5. Returns the combined structure as pretty-printed JSON
+// It does NOT verify the signature — decoding tells you what's inside,
+// verification tells you whether to trust it. Mixing those two is how
+// people get owned, so they live in different packages on purpose.
 //
-// Parameters:
-//   - raw: The complete JWT token string (header.payload.signature)
-//
-// Returns:
-//   - A pretty-printed JSON string representing the decoded token
-//   - An error if the token is malformed or cannot be decoded
-//
-// Note: This function does NOT verify the token's signature.
-// It is intended for inspection and debugging purposes only.
-func Parse(raw string) (string, error) {
+// The input must already be trimmed (no "Bearer ", no quotes). See
+// internal/input for that cleaning step.
+func Parse(raw string) (Token, error) {
+	if len(raw) > MaxTokenSize {
+		return Token{}, fmt.Errorf("%w: %d bytes > %d", ErrTooLarge, len(raw), MaxTokenSize)
+	}
+	// TrimSpace here is just belt-and-braces; input should have done it.
+	// Keeping it makes Parse forgiving when called directly in tests.
+	raw = strings.TrimSpace(raw)
+
 	parts := strings.Split(raw, ".")
 	if len(parts) != expectedParts {
-		return "", fmt.Errorf("%w: expected %d parts, got %d",
-			ErrInvalidFormat, expectedParts, len(parts))
+		// Hint JWE explicitly — otherwise users stare at "expected 3 got 5".
+		if len(parts) == 5 {
+			return Token{}, fmt.Errorf("%w: got 5 parts (this looks like JWE, only JWT is supported)", ErrInvalidFormat)
+		}
+		return Token{}, fmt.Errorf("%w: expected %d parts, got %d", ErrInvalidFormat, expectedParts, len(parts))
 	}
 
-	header, err := decodeSegment(parts[partHeader])
+	header, err := decodeObject(parts[partHeader])
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrDecodeHeader, err)
+		return Token{}, fmt.Errorf("%w: %v", ErrDecodeHeader, err)
 	}
-
-	payload, err := decodeSegment(parts[partPayload])
+	payload, err := decodeObject(parts[partPayload])
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrDecodePayload, err)
+		return Token{}, fmt.Errorf("%w: %v", ErrDecodePayload, err)
 	}
 
-	token := Token{
-		Header:    header,
-		Payload:   payload,
-		Signature: parts[partSignature],
-	}
-
-	return toJSON(token)
+	return Token{
+		Header:       header,
+		Payload:      payload,
+		Signature:    parts[partSignature],
+		SigningInput: parts[partHeader] + "." + parts[partPayload],
+		Raw:          raw,
+	}, nil
 }
 
-// decodeSegment decodes a single base64url-encoded JWT segment.
+// decodeObject decodes one base64url JSON-object segment.
 //
-// JWT segments use base64url encoding (RFC 4648) without padding.
-// This function handles the decoding and JSON unmarshaling in one step.
-//
-// Parameters:
-//   - seg: A base64url-encoded JSON string (without padding)
-//
-// Returns:
-//   - The decoded JSON as an any type (preserves structure)
-//   - An error if decoding or unmarshaling fails
-func decodeSegment(seg string) (any, error) {
+// Why RawURLEncoding and not StdEncoding? RFC 7519 mandates base64url
+// without padding. Accepting StdEncoding here would silently accept
+// non-JWT strings and produce confusing errors downstream.
+func decodeObject(seg string) (map[string]any, error) {
+	if len(seg) == 0 {
+		return nil, fmt.Errorf("empty segment")
+	}
+	if len(seg) > MaxSegmentSize {
+		return nil, fmt.Errorf("%w: segment %d bytes", ErrTooLarge, len(seg))
+	}
+	// Performance note: DecodeString allocates once for the JSON bytes.
+	// That's fine — segments are small and this keeps the code obvious.
 	data, err := base64.RawURLEncoding.DecodeString(seg)
 	if err != nil {
 		return nil, err
 	}
-
-	var result any
-	if err := json.Unmarshal(data, &result); err != nil {
+	var obj map[string]any
+	if err := json.Unmarshal(data, &obj); err != nil {
 		return nil, err
 	}
-
-	return result, nil
-}
-
-// toJSON converts a Token struct to a pretty-printed JSON string.
-//
-// The output uses 2-space indentation for readability.
-//
-// Parameters:
-//   - token: The Token struct to serialize
-//
-// Returns:
-//   - A formatted JSON string
-//   - An error if JSON marshaling fails (should not happen with valid Token)
-func toJSON(token Token) (string, error) {
-	data, err := json.MarshalIndent(token, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal token: %w", err)
+	if obj == nil {
+		return nil, fmt.Errorf("segment is JSON null, want object")
 	}
-	return string(data), nil
+	return obj, nil
 }
