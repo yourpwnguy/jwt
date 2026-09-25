@@ -1,3 +1,8 @@
+// Package reader owns file I/O: opening, size-guarding, and line scanning.
+//
+// It stays deliberately dumb — no token knowledge, no Bearer stripping.
+// Callers in internal/input decide what lines mean. That keeps this
+// package reusable and its failure modes obvious (open vs. read vs. too big).
 package reader
 
 import (
@@ -7,21 +12,28 @@ import (
 	"strings"
 )
 
-// ReadLines reads all non-empty lines from a file and returns them as a slice.
-//
-// The function handles:
-//   - Opening and properly closing the file
-//   - Trimming leading/trailing whitespace from each line
-//   - Filtering out empty lines (after trimming)
-//   - Detecting and reporting read errors
-//
-// Parameters:
-//   - path: The filesystem path to the file to read
-//
-// Returns:
-//   - A slice of non-empty, trimmed lines from the file
-//   - An error if the file cannot be opened or read
+// Guards: a token list is small text. 5MB already holds ~1500 max-size
+// tokens; beyond that the user should split the file. The per-line cap
+// (256KB) covers --extract log lines while still bounding Scanner memory.
+const (
+	MaxFileBytes = 5 << 20
+	MaxLineBytes = 256 * 1024
+)
+
+// ReadLines returns non-empty trimmed lines from path.
+// Empty lines (or whitespace-only) are skipped so hand-edited token
+// files with blank separators just work.
 func ReadLines(path string) ([]string, error) {
+	fi, err := os.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file %q: %w", path, err)
+	}
+	if fi.IsDir() {
+		return nil, fmt.Errorf("failed to open file %q: is a directory", path)
+	}
+	if fi.Size() > MaxFileBytes {
+		return nil, fmt.Errorf("file %q too large (%d bytes > %d)", path, fi.Size(), MaxFileBytes)
+	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %q: %w", path, err)
@@ -31,37 +43,21 @@ func ReadLines(path string) ([]string, error) {
 	return scanLines(file)
 }
 
-// scanLines reads lines from an opened file using a buffered scanner.
-//
-// This is an internal function separated from ReadLines for better
-// testability and separation of concerns. It handles:
-//   - Buffered reading
-//   - Line-by-line processing
-//   - Whitespace trimming
-//   - Empty line filtering
-//   - Scanner error detection
-//
-// Parameters:
-//   - file: An opened *os.File to read from
-//
-// Returns:
-//   - A slice of processed lines
-//   - An error if the scanner encounters a read error
+// scanLines buffers with an enlarged Scanner window so long --extract
+// lines don't hit the default 64KB "token too long" error.
 func scanLines(file *os.File) ([]string, error) {
 	var lines []string
 	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 64*1024), MaxLineBytes)
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
-
-		// Skip empty lines (including lines that were only whitespace)
 		if line == "" {
 			continue
 		}
 		lines = append(lines, line)
 	}
 
-	// Check for scanner errors (e.g., line too long, I/O error)
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}
