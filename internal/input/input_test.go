@@ -90,6 +90,13 @@ func TestResolvePrecedence(t *testing.T) {
 	if err != nil || len(got) != 0 {
 		t.Fatalf("tty: got=%v err=%v", got, err)
 	}
+	// Explicit "-" on a terminal errors instead of blocking forever.
+	// Nobody hand-types a token; waiting would always be a mistake.
+	if _, err := Resolve(ctx, Config{Args: []string{"-"}, Stdin: strings.NewReader(hs), StdinIsTTY: true}); err == nil {
+		t.Error("expected terminal error for explicit - on TTY")
+	} else if !strings.Contains(err.Error(), "terminal") {
+		t.Errorf("error should mention terminal: %v", err)
+	}
 	// Cancelled context aborts.
 	cancelled, cancel := context.WithCancel(ctx)
 	cancel()

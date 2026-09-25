@@ -12,9 +12,17 @@ import (
 
 // readStdin reads up to MaxStdinBytes. Empty implicit pipes yield no
 // tokens (not an error); callers report "no tokens" with better context.
+//
+// A terminal is refused outright: blocking on keystrokes for a token no
+// human will ever type is always a mistake, and the blocked read below
+// cannot be interrupted. The implicit-pipe path never reaches here on a
+// TTY (Resolve guards it), so this only triggers on an explicit "-".
 func readStdin(cfg Config, allowEmpty bool) ([]string, error) {
 	if cfg.Stdin == nil {
 		return nil, nil
+	}
+	if cfg.StdinIsTTY {
+		return nil, fmt.Errorf("cannot read stdin: stdin is a terminal, pipe input instead (e.g. echo $TOKEN | jwt -)")
 	}
 	data, err := io.ReadAll(io.LimitReader(cfg.Stdin, MaxStdinBytes+1))
 	if err != nil {
