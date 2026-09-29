@@ -11,7 +11,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // Severity grades a failed check. Ordering matters: CI gates use

@@ -3,7 +3,7 @@ package output
 import (
 	"encoding/json"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // format.go turns one token into stdout text. It owns JSON marshaling

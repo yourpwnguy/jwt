@@ -2,7 +2,7 @@
 
 BINARY  := jwt
 VERSION := $(shell git describe --tags --dirty --always 2>/dev/null || echo dev)
-LDFLAGS := -ldflags "-s -w -X github.com/yourpwnguy/jwt/internal/version.Number=$(VERSION)"
+LDFLAGS := -ldflags "-s -w -X github.com/yourpwnguy/jwt/v2/internal/version.Number=$(VERSION)"
 
 build:
 	@echo "Building $(BINARY) $(VERSION)..."

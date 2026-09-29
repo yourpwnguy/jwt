@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // sig.go dispatches to the right primitive by alg. It owns the

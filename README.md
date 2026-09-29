@@ -30,7 +30,7 @@
 To install the jwt tool, you can simply use the following command.
 
 ```bash
-go install -v "github.com/yourpwnguy/jwt/cmd/jwt@latest"
+go install -v "github.com/yourpwnguy/jwt/v2/cmd/jwt@latest"
 cp ~/go/bin/jwt /usr/local/bin/
 ```
 

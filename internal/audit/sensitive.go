@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // sensitive.go isolates PII/secret scanning so the keyword list can

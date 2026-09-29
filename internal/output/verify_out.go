@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
-	"github.com/yourpwnguy/jwt/internal/verify"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/verify"
 )
 
 // verify_out.go renders trust decisions. Human mode shows the token

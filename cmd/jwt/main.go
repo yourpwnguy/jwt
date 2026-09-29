@@ -11,7 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/yourpwnguy/jwt/internal/cli"
+	"github.com/yourpwnguy/jwt/v2/internal/cli"
 )
 
 // main exits with cli.Run's code. os.Exit skips defers by design —

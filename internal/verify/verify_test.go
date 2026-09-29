@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // test helpers mint real tokens so verify tests exercise actual crypto,

@@ -8,9 +8,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/input"
-	"github.com/yourpwnguy/jwt/internal/jwt"
-	"github.com/yourpwnguy/jwt/internal/output"
+	"github.com/yourpwnguy/jwt/v2/internal/input"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/output"
 )
 
 // decode.go implements `jwt decode` (and the bare `jwt` compat path).

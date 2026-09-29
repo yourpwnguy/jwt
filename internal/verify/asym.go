@@ -11,7 +11,7 @@ import (
 	"hash"
 	"math/big"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // asym.go verifies RSA/ECDSA/EdDSA/PS signatures with stdlib only.

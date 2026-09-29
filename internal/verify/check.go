@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // check.go runs the Verify orchestration: signature first, claims second.

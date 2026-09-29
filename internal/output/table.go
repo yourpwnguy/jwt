@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // table.go renders batch overviews: one row per token.

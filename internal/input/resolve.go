@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yourpwnguy/jwt/internal/reader"
+	"github.com/yourpwnguy/jwt/v2/internal/reader"
 )
 
 // resolve.go orchestrates Config into an ordered token list.

@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // hmac.go verifies HS256/384/512. Small file on purpose: HMAC logic

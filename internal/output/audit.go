@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/yourpwnguy/jwt/internal/audit"
+	"github.com/yourpwnguy/jwt/v2/internal/audit"
 )
 
 // audit.go renders static-analysis reports. JSON is for CI gates

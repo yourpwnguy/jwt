@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 func testToken(t *testing.T) jwt.Token {

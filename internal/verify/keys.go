@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // keys.go resolves --pubkey/--jwks into a public key. --pubkey wins

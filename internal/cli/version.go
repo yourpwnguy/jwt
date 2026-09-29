@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/yourpwnguy/jwt/internal/version"
+	"github.com/yourpwnguy/jwt/v2/internal/version"
 )
 
 // version.go prints the build version to the given writer (stderr).

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // rules.go holds the actual checks. Each rule is a tiny pure function —

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/audit"
-	"github.com/yourpwnguy/jwt/internal/jwt"
-	"github.com/yourpwnguy/jwt/internal/verify"
+	"github.com/yourpwnguy/jwt/v2/internal/audit"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/verify"
 )
 
 // Audit/verify rendering tests guard the machine contracts:

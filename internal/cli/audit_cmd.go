@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/audit"
-	"github.com/yourpwnguy/jwt/internal/input"
-	"github.com/yourpwnguy/jwt/internal/jwt"
-	"github.com/yourpwnguy/jwt/internal/output"
+	"github.com/yourpwnguy/jwt/v2/internal/audit"
+	"github.com/yourpwnguy/jwt/v2/internal/input"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/output"
 )
 
 // audit_cmd.go implements `jwt audit`: static checks over every token.

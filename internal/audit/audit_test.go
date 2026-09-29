@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yourpwnguy/jwt/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
 // Helpers build tokens from raw JWT strings (audit never checks
