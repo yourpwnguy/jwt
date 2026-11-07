@@ -12,6 +12,15 @@ import (
 
 type tickMsg time.Time
 
+const stampFrames = 5
+
+// stampTickMsg drives the short letterpress pulse after signing. It is
+// a one-shot chain, not a permanent animation: when stamp reaches zero
+// no more timers are scheduled.
+type stampTickMsg struct {
+	id int
+}
+
 type copiedMsg struct {
 	err     error
 	warning string
@@ -43,6 +52,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		m.tick(time.Time(msg))
 		return m, tickCmd()
+	case stampTickMsg:
+		if msg.id == m.stampID && m.stamp > 0 {
+			m.stamp--
+			if m.stamp > 0 {
+				return m, stampTick(m.stampID)
+			}
+		}
+		return m, nil
 	case toastClearMsg:
 		if msg.id == m.toastID {
 			m.toast = ""
@@ -72,6 +89,20 @@ func tickCmd() tea.Cmd {
 	})
 }
 
+// startStamp begins the signature pulse. The id prevents an old timer
+// from shortening a newer stamp when the user signs twice quickly.
+func (m *model) startStamp() tea.Cmd {
+	m.stampID++
+	m.stamp = stampFrames
+	return stampTick(m.stampID)
+}
+
+func stampTick(id int) tea.Cmd {
+	return tea.Tick(55*time.Millisecond, func(time.Time) tea.Msg {
+		return stampTickMsg{id: id}
+	})
+}
+
 func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 	// Ctrl-C always quits, even mid-edit or inside a dialog. Esc is the
 	// non-destructive close key.
@@ -91,6 +122,27 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (m *model) handleEditKey(msg tea.KeyMsg) tea.Cmd {
+	// Vim motions are checked before the widget sees the key. The
+	// textarea would otherwise treat ctrl+h as delete-backward and
+	// ctrl+k as delete-after-cursor. Backspace and Delete still cover
+	// those jobs, so taking the aliases costs nothing important.
+	//
+	// ctrl+i is not here on purpose: terminals send the same byte for
+	// ctrl+i and Tab, and Tab is how sections are switched. The help
+	// screen says this out loud so nobody thinks it is a bug.
+	if m.vimKeys {
+		switch msg.String() {
+		case "ctrl+h":
+			return m.updateActive(tea.KeyMsg{Type: tea.KeyLeft})
+		case "ctrl+j":
+			return m.updateActive(tea.KeyMsg{Type: tea.KeyDown})
+		case "ctrl+k":
+			return m.updateActive(tea.KeyMsg{Type: tea.KeyUp})
+		case "ctrl+l":
+			return m.updateActive(tea.KeyMsg{Type: tea.KeyRight})
+		}
+	}
+
 	switch msg.String() {
 	case "esc", "ctrl+o":
 		m.mode = modeCommand

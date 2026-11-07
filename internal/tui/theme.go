@@ -1,19 +1,34 @@
 package tui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
 
-// theme.go holds the logo palette and the few styles the editor uses.
+	"github.com/charmbracelet/lipgloss"
+)
+
+// theme.go owns the palette and the small style vocabulary used by the
+// editor. The look is an editorial page, not a dashboard: a painted
+// paper or ink canvas, one accent per token section, hairline rules, and
+// a lot of empty space.
 //
-// The brand colors come straight from the README logo: amber, coral,
-// cyan. In the editor they map to header, payload, signature, so color
-// tells you which part of the token you are looking at instead of just
-// decorating the screen.
+// The three section colors still come from the README logo: amber for
+// the header, coral for the payload, cyan for the signature. They are
+// used as ink, not as filled blocks, so the screen stays quiet. Fills
+// are reserved for rare moments: a severity tag and the signature stamp.
 //
-// Text colors are adaptive. Bright logo colors are used for filled
-// badges because dark ink reads well on all of them, and the text
-// versions get darker on light terminals so they stay readable.
+// Text colors are adaptive. Light terminals get darker accents, dark
+// terminals get the bright logo colors. Nothing uses faint or dim SGR,
+// because that disappears on some light themes.
 type theme struct {
 	mode ThemeMode
+
+	canvas  lipgloss.TerminalColor
+	surface lipgloss.TerminalColor
+	edge    lipgloss.TerminalColor
+
+	ink      lipgloss.TerminalColor
+	muted    lipgloss.TerminalColor
+	hairline lipgloss.TerminalColor
 
 	header    lipgloss.TerminalColor
 	payload   lipgloss.TerminalColor
@@ -21,20 +36,17 @@ type theme struct {
 	success   lipgloss.TerminalColor
 	warning   lipgloss.TerminalColor
 	danger    lipgloss.TerminalColor
-	muted     lipgloss.TerminalColor
 }
 
-// Fill colors are the actual logo colors and do not change with the
-// terminal theme. They are always used with dark ink, so contrast is
-// predictable on both light and dark backgrounds.
+// Fill colors are the logo colors at full strength. They always carry
+// dark ink, so contrast does not depend on the terminal background.
 var (
 	fillHeader    = lipgloss.Color("#FFC107")
-	fillPayload   = lipgloss.Color("#F48C6C")
 	fillSignature = lipgloss.Color("#3DD0F2")
 	fillSuccess   = lipgloss.Color("#7EE787")
 	fillWarning   = lipgloss.Color("#FFA657")
 	fillDanger    = lipgloss.Color("#FF6B6B")
-	pillInk       = lipgloss.Color("#141414")
+	inkOnFill     = lipgloss.Color("#141414")
 )
 
 func newTheme(mode ThemeMode) theme {
@@ -42,14 +54,21 @@ func newTheme(mode ThemeMode) theme {
 		mode = ThemeAuto
 	}
 	return theme{
-		mode:      mode,
-		header:    adaptive("#9A6600", "#FFC107", mode),
-		payload:   adaptive("#C2553D", "#F48C6C", mode),
-		signature: adaptive("#007A8C", "#3DD0F2", mode),
+		mode:    mode,
+		canvas:  adaptive("#F6F1E7", "#0D1014", mode),
+		surface: adaptive("#EFE8DA", "#141A21", mode),
+		edge:    adaptive("#E1D7C5", "#1E2630", mode),
+
+		ink:      adaptive("#1B1916", "#EDE7DA", mode),
+		muted:    adaptive("#6B6357", "#A79E8E", mode),
+		hairline: adaptive("#CEC3B0", "#2C343E", mode),
+
+		header:    adaptive("#946000", "#FFC107", mode),
+		payload:   adaptive("#B04932", "#F48C6C", mode),
+		signature: adaptive("#007084", "#3DD0F2", mode),
 		success:   adaptive("#1A7F37", "#7EE787", mode),
-		warning:   adaptive("#B35C00", "#FFA657", mode),
-		danger:    adaptive("#C62828", "#FF6B6B", mode),
-		muted:     adaptive("#6B6257", "#A79E8F", mode),
+		warning:   adaptive("#985100", "#FFA657", mode),
+		danger:    adaptive("#B3261E", "#FF6B6B", mode),
 	}
 }
 
@@ -80,28 +99,17 @@ func (t theme) sectionColor(s section) lipgloss.TerminalColor {
 	}
 }
 
-func (t theme) sectionFill(s section) lipgloss.TerminalColor {
+// cursorLine is a barely-there wash under the active line. It is a
+// background tint, never a text color, so JSON stays at full contrast.
+func (t theme) cursorLine(s section) lipgloss.TerminalColor {
 	switch s {
 	case sectionHeader:
-		return fillHeader
+		return adaptive("#FBF0CE", "#272009", t.mode)
 	case sectionPayload:
-		return fillPayload
-	case sectionSignature:
-		return fillSignature
+		return adaptive("#FBE3DB", "#271714", t.mode)
 	default:
-		return fillSignature
+		return adaptive("#DDF5FA", "#07232B", t.mode)
 	}
-}
-
-// pill is the one filled shape in the UI. It is used for the active
-// tab, the status badges, and the mode label in the footer.
-func (t theme) pill(label string, fill lipgloss.TerminalColor) string {
-	return lipgloss.NewStyle().
-		Background(fill).
-		Foreground(pillInk).
-		Bold(true).
-		Padding(0, 1).
-		Render(label)
 }
 
 func (t theme) fg(color lipgloss.TerminalColor) lipgloss.Style {
@@ -116,15 +124,38 @@ func (t theme) mutedStyle() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(t.muted)
 }
 
-// cursorLine is a very slight tint, not a block of color. The textarea
-// keeps the terminal's normal foreground, so JSON stays readable.
-func (t theme) cursorLine(s section) lipgloss.TerminalColor {
-	switch s {
-	case sectionHeader:
-		return adaptive("#FFF4D6", "#2A2208", t.mode)
-	case sectionPayload:
-		return adaptive("#FFE9E3", "#2A1714", t.mode)
-	default:
-		return adaptive("#DFF8FD", "#08222A", t.mode)
+// chip is the only filled label in the main layout. Severity tags and
+// the signed stamp use it; everything else is ink on paper.
+func (t theme) chip(label string, fill lipgloss.TerminalColor) string {
+	return lipgloss.NewStyle().
+		Background(fill).
+		Foreground(inkOnFill).
+		Bold(true).
+		Padding(0, 1).
+		Render(label)
+}
+
+// keycap is a quiet key label for the help page and the sign form. The
+// background is a paper shade, not a bright accent, so a page full of
+// keys still reads as text.
+func (t theme) keycap(key string) string {
+	return lipgloss.NewStyle().
+		Background(t.edge).
+		Foreground(t.ink).
+		Bold(true).
+		Padding(0, 1).
+		Render(key)
+}
+
+// tracked adds a little air between letters. It is used once, in the
+// masthead, where a mono font needs help to feel like a masthead.
+func tracked(s string) string {
+	var b strings.Builder
+	for i, r := range s {
+		if i > 0 && r != ' ' {
+			b.WriteByte(' ')
+		}
+		b.WriteRune(r)
 	}
+	return b.String()
 }

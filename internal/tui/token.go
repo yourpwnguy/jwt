@@ -6,6 +6,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/mattn/go-runewidth"
 )
 
@@ -63,7 +64,9 @@ func (m model) tokenDisplayLines(width, maxLines int) []string {
 	lines := m.wrappedToken(width)
 	if maxLines > 0 && len(lines) > maxLines {
 		if maxLines == 1 {
-			return lines[:1]
+			// Say that there is more token instead of ending the line
+			// at an arbitrary base64 character.
+			return []string{ansi.Truncate(lines[0], max(1, width-1), "…")}
 		}
 		keep := maxLines - 1
 		hidden := len(lines) - keep

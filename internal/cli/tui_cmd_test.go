@@ -36,6 +36,12 @@ func TestTUIUsageIsDiscoverable(t *testing.T) {
 	if !strings.Contains(editor.String(), "ctrl+s") {
 		t.Error("tui usage missing key hints")
 	}
+	if !strings.Contains(editor.String(), "ctrl+h / ctrl+l") {
+		t.Error("tui usage missing vim motion hints")
+	}
+	if !strings.Contains(editor.String(), "--no-vim-keys") {
+		t.Error("tui usage missing the vim motion switch")
+	}
 }
 
 func TestTUIHelpWorksWithoutTTY(t *testing.T) {

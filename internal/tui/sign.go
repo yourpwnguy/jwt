@@ -109,9 +109,10 @@ func (m *model) submitSign() tea.Cmd {
 	m.refresh()
 
 	toast := m.showToast("signed "+alg, toastSuccess)
+	stamp := m.startStamp()
 	if m.mode == modeEdit {
-		return tea.Batch(toast, m.focusSection())
+		return tea.Batch(toast, m.focusSection(), stamp)
 	}
 	m.blurAll()
-	return toast
+	return tea.Batch(toast, stamp)
 }

@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 
@@ -31,6 +32,22 @@ func keyMsg(s string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyCtrlR}
 	case "ctrl+c":
 		return tea.KeyMsg{Type: tea.KeyCtrlC}
+	case "ctrl+h":
+		return tea.KeyMsg{Type: tea.KeyCtrlH}
+	case "ctrl+j":
+		return tea.KeyMsg{Type: tea.KeyCtrlJ}
+	case "ctrl+k":
+		return tea.KeyMsg{Type: tea.KeyCtrlK}
+	case "ctrl+l":
+		return tea.KeyMsg{Type: tea.KeyCtrlL}
+	case "left":
+		return tea.KeyMsg{Type: tea.KeyLeft}
+	case "right":
+		return tea.KeyMsg{Type: tea.KeyRight}
+	case "up":
+		return tea.KeyMsg{Type: tea.KeyUp}
+	case "down":
+		return tea.KeyMsg{Type: tea.KeyDown}
 	default:
 		return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(s)}
 	}
@@ -46,6 +63,97 @@ func setText(m *model, s section, text string) {
 	m.section = s
 	m.setSectionText(text)
 	m.refresh()
+}
+
+func TestVimMotionsMoveTheCursor(t *testing.T) {
+	m := testModel(t, testToken, 120, 32)
+	for m.header.Line() > 0 {
+		m.header.CursorUp()
+	}
+	m.header.CursorStart()
+
+	m = send(t, m, "ctrl+l")
+	if got := m.header.LineInfo().ColumnOffset; got != 1 {
+		t.Fatalf("ctrl+l column = %d, want 1", got)
+	}
+	m = send(t, m, "ctrl+h")
+	if got := m.header.LineInfo().ColumnOffset; got != 0 {
+		t.Fatalf("ctrl+h column = %d, want 0", got)
+	}
+
+	m = send(t, m, "ctrl+j")
+	if got := m.header.Line(); got != 1 {
+		t.Fatalf("ctrl+j line = %d, want 1", got)
+	}
+	m = send(t, m, "ctrl+k")
+	if got := m.header.Line(); got != 0 {
+		t.Fatalf("ctrl+k line = %d, want 0", got)
+	}
+
+	// Arrows are an addition, not a replacement, so they still move.
+	m = send(t, m, "down")
+	if got := m.header.Line(); got != 1 {
+		t.Fatalf("down line = %d, want 1", got)
+	}
+	m = send(t, m, "up")
+	if got := m.header.Line(); got != 0 {
+		t.Fatalf("up line = %d, want 0", got)
+	}
+	m = send(t, m, "right")
+	if got := m.header.LineInfo().ColumnOffset; got != 1 {
+		t.Fatalf("right column = %d, want 1", got)
+	}
+	m = send(t, m, "left")
+	if got := m.header.LineInfo().ColumnOffset; got != 0 {
+		t.Fatalf("left column = %d, want 0", got)
+	}
+}
+
+func TestCtrlIStaysTab(t *testing.T) {
+	m := testModel(t, testToken, 120, 32)
+	m = send(t, m, "tab") // KeyTab is the same byte as ctrl+i.
+	if m.section != sectionPayload {
+		t.Fatalf("ctrl+i changed section to %v, want payload", m.section)
+	}
+}
+
+func TestVimMotionsReachSignatureField(t *testing.T) {
+	m := testModel(t, testToken, 120, 32)
+	m.section = sectionSignature
+	m.focusSection()
+	m.signature.SetCursor(0)
+
+	m = send(t, m, "ctrl+l")
+	if got := m.signature.Position(); got != 1 {
+		t.Fatalf("ctrl+l signature position = %d, want 1", got)
+	}
+	m = send(t, m, "ctrl+h")
+	if got := m.signature.Position(); got != 0 {
+		t.Fatalf("ctrl+h signature position = %d, want 0", got)
+	}
+}
+
+func TestVimMotionsCanBeDisabled(t *testing.T) {
+	m, err := newModel(context.Background(), Options{
+		Token:     testToken,
+		NoVimKeys: true,
+		Now:       func() time.Time { return fixedNow },
+		Copy:      func(string) error { return nil },
+	})
+	if err != nil {
+		t.Fatalf("newModel: %v", err)
+	}
+	m.resize(120, 32)
+	m.header.CursorStart()
+
+	m = send(t, m, "ctrl+l")
+	if got := m.header.LineInfo().ColumnOffset; got != 0 {
+		t.Fatalf("ctrl+l moved with vim keys off, column = %d", got)
+	}
+	m = send(t, m, "right")
+	if got := m.header.LineInfo().ColumnOffset; got != 1 {
+		t.Fatalf("arrow did not move with vim keys off, column = %d", got)
+	}
 }
 
 func TestEditMarksSignatureStale(t *testing.T) {
@@ -103,6 +211,7 @@ func TestInvalidJSONKeepsLastValidToken(t *testing.T) {
 		t.Error("view should label the JSON problem, not a bad signature")
 	}
 	if !strings.Contains(view, "PAYLOAD ✗") {
+		t.Logf("view:\n%s", view)
 		t.Error("payload tab should carry an error marker")
 	}
 }
@@ -126,6 +235,9 @@ func TestSignRoundTrip(t *testing.T) {
 	}
 	if m.sigState != sigSigned {
 		t.Fatalf("sigState = %v, want signed", m.sigState)
+	}
+	if m.stamp != stampFrames {
+		t.Fatalf("stamp = %d, want %d after signing", m.stamp, stampFrames)
 	}
 
 	tok, err := jwt.Parse(m.currentToken)
@@ -254,6 +366,29 @@ func TestCopyUsesCurrentTokenAndWarns(t *testing.T) {
 	m = updated.(model)
 	if !strings.Contains(m.toast, "signature stale") {
 		t.Fatalf("toast = %q, want stale warning", m.toast)
+	}
+}
+
+func TestHelpExplainsMotionsAndReservedKeys(t *testing.T) {
+	m := testModel(t, testToken, 120, 32)
+	m.openHelp()
+	view := m.View()
+	for _, want := range []string{
+		"MOVE WITHOUT LEAVING INSERT MODE",
+		"ctrl+h",
+		"ctrl+l",
+		"ctrl+i is Tab",
+		"--no-vim-keys",
+	} {
+		if !strings.Contains(view, want) {
+			t.Errorf("help missing %q", want)
+		}
+	}
+
+	m.vimKeys = false
+	m.openHelp()
+	if off := m.View(); !strings.Contains(off, "VIM MOTIONS ARE OFF") {
+		t.Error("help should say when the motions are disabled")
 	}
 }
 

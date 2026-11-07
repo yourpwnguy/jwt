@@ -27,6 +27,7 @@ type model struct {
 	width, height int
 	mode          mode
 	section       section
+	vimKeys       bool
 
 	header    textarea.Model
 	payload   textarea.Model
@@ -46,7 +47,7 @@ type model struct {
 	headerDirty     bool
 	payloadDirty    bool
 
-	// Signature origin. A stale badge compares the current signing
+	// Signature origin. A stale status compares the current signing
 	// input against this snapshot.
 	originInput string
 	originSig   string
@@ -73,6 +74,11 @@ type model struct {
 	toast    string
 	toastK   toastKind
 	toastID  int
+
+	// stamp is the short letterpress animation after a successful
+	// signature. Zero means idle.
+	stamp   int
+	stampID int
 
 	overlay viewport.Model
 }
@@ -176,6 +182,7 @@ func newModel(ctx context.Context, opts Options) (model, error) {
 		theme:   newTheme(opts.Theme),
 		mode:    modeEdit,
 		section: sectionHeader,
+		vimKeys: !opts.NoVimKeys,
 		overlay: viewport.New(0, 0),
 	}
 	m.header = newTextarea(m.theme, sectionHeader)
@@ -195,9 +202,8 @@ func newModel(ctx context.Context, opts Options) (model, error) {
 	return m, nil
 }
 
-// loadToken decodes a valid token into the editor. The visible JSON is
-// pretty-printed for editing, but the original segments are kept for
-// encoding until the user actually changes that pane.
+// focusSection blurs every widget and focuses the active one. The
+// returned command starts the cursor blink.
 func (m *model) focusSection() tea.Cmd {
 	m.header.Blur()
 	m.payload.Blur()

@@ -8,7 +8,7 @@
 //
 // The central rule is that the editor never rewrites a token silently:
 // untouched panes keep their original base64 segments, and edited panes
-// are encoded from the exact text on screen. The signature badge reports
+// are encoded from the exact text on screen. The signature status reports
 // untouched, signed, stale, custom, unsigned, or invalid, and never
 // claims "valid" unless the user just signed the token.
 package tui
@@ -44,6 +44,10 @@ type Options struct {
 	NoColor bool
 	// Theme is auto, dark, or light.
 	Theme ThemeMode
+	// NoVimKeys disables the ctrl+h/j/k/l cursor motions. Arrows always
+	// work either way. The motions are on by default because the editor
+	// is the main place people type.
+	NoVimKeys bool
 	// InputIsTTY is false when stdin is a pipe. In that case the TUI
 	// opens the controlling terminal for keys instead of reading EOF.
 	InputIsTTY bool

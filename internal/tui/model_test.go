@@ -72,6 +72,44 @@ func TestSmallLayoutShowsToken(t *testing.T) {
 	}
 }
 
+func TestEveryPageFitsTheWindow(t *testing.T) {
+	sizes := []struct{ w, h int }{
+		{120, 32}, {108, 28}, {100, 30}, {84, 16}, {80, 24}, {60, 16},
+	}
+	pages := []struct {
+		name   string
+		footer string
+		open   func(*model)
+	}{
+		{"edit", "● EDIT", func(m *model) {}},
+		{"sign", "● SIGN", func(m *model) { m.startSign() }},
+		{"help", "● HELP", func(m *model) { m.openHelp() }},
+		{"audit", "● AUDIT", func(m *model) { m.openAudit() }},
+		{"token", "● TOKEN", func(m *model) { m.openToken() }},
+	}
+	for _, size := range sizes {
+		for _, page := range pages {
+			m := testModel(t, testToken, size.w, size.h)
+			page.open(&m)
+			view := m.View()
+			if got := lipgloss.Height(view); got != size.h {
+				t.Errorf("%s %dx%d: height = %d", page.name, size.w, size.h, got)
+			}
+			if !strings.Contains(view, page.footer) {
+				t.Errorf("%s %dx%d: footer is clipped", page.name, size.w, size.h)
+			}
+			if !strings.Contains(view, "JWT.") {
+				t.Errorf("%s %dx%d: masthead is clipped", page.name, size.w, size.h)
+			}
+			for i, line := range strings.Split(view, "\n") {
+				if got := lipgloss.Width(line); got != size.w {
+					t.Fatalf("%s %dx%d line %d: width = %d", page.name, size.w, size.h, i+1, got)
+				}
+			}
+		}
+	}
+}
+
 func TestResizeWhileOverlaysOpen(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
 	m.startSign()

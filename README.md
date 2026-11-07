@@ -23,7 +23,7 @@
 - Single claim lookup with `--claim`.
 - Passive security audit with severity levels and CI gates.
 - Signature verification for HMAC, RSA, ECDSA, and EdDSA, with JWKS support.
-- Live token editor with `jwt tui`: edit header and payload, watch the encoded token and audit update, sign HMAC tokens, and copy the result.
+- Live token editor with `jwt tui`: edit header and payload, watch the encoded token and audit update, sign HMAC tokens, copy the result, and move with Vim-style `ctrl+h/j/k/l` motions.
 - Stable exit codes for scripts and CI.
 
 ## Installation 🛠️
@@ -178,28 +178,42 @@ $ jwt tui "$TOKEN"
 ```
 
 ```text
-JWT ●●●  token studio                                HS256  UNTOUCHED  ✗ 1 ISSUE
+  JWT.   T O K E N  P R E S S                                            ● HS256   ● UNTOUCHED   ● 1 ISSUE
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────
 
-● HEADER   ○ PAYLOAD   ○ SIGNATURE
-╭────────────────────────────────╮  ╭─ ENCODED TOKEN ──────────────────╮
-│ 1 {                            │  │ eyJhbGciOiJIUzI1NiIsInR5cCI6...    │
-│ 2   "alg": "HS256",            │  │ .eyJzdWIiOiIxMjM0NTY3ODkwIiw...    │
-│ 3   "typ": "JWT"               │  │ .SflKxwRJSMeKKF2QT4fwpMeJf36...    │
-│ 4 }                            │  │                                    │
-│                                │  │ signature  untouched              │
-│                                │  │ exp        no exp claim           │
-│                                │  │ size       155 B                  │
-│                                │  │ AUDIT  ✗ 1 issue                  │
-│                                │  │ HIGH  missing-exp                 │
-╰────────────────────────────────╯  ╰───────────────────────────────────╯
+   █████    ██       1 {                                                 │  ENCODED TOKEN          155 B
+   ██ ██   ███       2   "alg": "HS256",                                 │
+   ██ ██    ██       3   "typ": "JWT"                                    │  eyJhbGciOiJIUzI1NiIsInR5cCI6
+   ██ ██    ██       4 }                                                 │  IkpXVCJ9.eyJzdWIiOiIxMjM0NTY
+   █████  █████                                                          │  3ODkwIiwibmFtZSI6IkpvaG4gRG9
+                                                                         │  lIiwiaWF0IjoxNTE2MjM5MDIyfQ.
+   HEADER                                                                │  SflKxwRJSMeKKF2QT4fwpMeJf36P
+   ━━━━━━                                                                │  Ok6yJV_adQssw5c
+                                                                         │
+   OBJECT                                                                │  ────────────────────────────
+   valid                                                                 │  ALG       HS256
+   2 keys                                                                │  SIGNATURE untouched
+   original                                                              │  EXPIRES   no exp claim
+                                                                         │  SIZE      155 B
+   ✓ 02 PAYLOAD                                                          │  ────────────────────────────
+                                                                         │  AUDIT              ✗ 1 ISSUE
+   ◇ 03 SIGNATURE                                                        │  ● ● ● ● ● ● ● ●
+                                                                         │  ✗ HIGH  missing-exp
+                                                                         │  no exp claim, stolen
+                                                                         │  tokens never expire
 
-EDIT   ctrl+s sign · ctrl+y copy · ctrl+o commands · tab section
+  ────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ● EDIT   ctrl+hjkl move · tab section · ctrl+s sign · ctrl+y copy · ctrl+o command                L4  C2
 ```
 
-The editor is a live scratchpad. Header and payload are plain JSON. The right side shows the exact token, the honest signature state, and the audit summary. Every valid keystroke rebuilds the token from the current segments and re-runs the offline audit.
+The editor is a live scratchpad. Header and payload are plain JSON. The token panel shows the exact encoded token, the honest signature state, and the audit summary. Every valid keystroke rebuilds the token from the current segments and re-runs the offline audit.
+
+The section rail, the page number, and the accent color follow the active section. Narrower terminals turn the rail into a tab row, and the narrowest move the token under the editor, so the same information survives at 60 columns.
 
 | Key | Action |
 | --- | --- |
+| `arrows` | Move the cursor, always available |
+| `ctrl+h` / `ctrl+j` / `ctrl+k` / `ctrl+l` | Move left / down / up / right, Vim style |
 | `tab` / `shift+tab` | Next / previous section |
 | `ctrl+o` or `esc` | Command mode |
 | `ctrl+s` | Sign the token |
@@ -210,13 +224,15 @@ The editor is a live scratchpad. Header and payload are plain JSON. The right si
 | `i` or `enter` | Back to editing (command mode) |
 | `q` | Quit (command mode, or `ctrl+c` anywhere) |
 
+The motions are on by default. `ctrl+i` is the Tab key at the terminal level, so it cannot be distinguished from Tab, and Tab keeps switching sections. `ctrl+h` and `ctrl+k` would otherwise be the textarea's delete aliases; Backspace and Delete still delete. If you would rather have the plain arrow-key editor, start with `jwt tui --no-vim-keys`.
+
 `ctrl+o` is the recommended way into command mode because it is a single control key. `esc` works too, but a very fast next keystroke can look like an Alt sequence to the terminal.
 
-The Signature tab is editable. You can paste a base64url signature produced by another tool. If the header or payload changes after a signature, the badge turns `STALE` and copying warns you. `ctrl+s` re-signs HMAC tokens with the secret you enter. Asymmetric signing is not in this build, so RS, PS, ES, and EdDSA tokens can still be edited, audited, and copied, but their signature will be marked stale until you paste or generate a new one.
+The Signature tab is editable. You can paste a base64url signature produced by another tool. If the header or payload changes after a signature, the status turns `STALE` and copying warns you. `ctrl+s` re-signs HMAC tokens with the secret you enter. Asymmetric signing is not in this build, so RS, PS, ES, and EdDSA tokens can still be edited, audited, and copied, but their signature will be marked stale until you paste or generate a new one.
 
-The editor never rewrites a token silently. Untouched panes keep their original base64 segments, and edited panes encode the exact text on screen, including whitespace and duplicate keys. That matters when you are testing how different parsers treat the same token. The editor shows pretty JSON, but the right side is the real bytes.
+The editor never rewrites a token silently. Untouched panes keep their original base64 segments, and edited panes encode the exact text on screen, including whitespace and duplicate keys. That matters when you are testing how different parsers treat the same token. The editor shows pretty JSON, but the token panel is the real bytes.
 
-Copy uses OSC 52, so it works over SSH in terminals that support it. Secrets and tokens stay in memory. Nothing is written to disk and nothing is sent over the network. Use `--theme auto|dark|light` if the terminal detects the background wrong, and `--no-color` for a plain UI.
+Copy uses OSC 52, so it works over SSH in terminals that support it. Secrets and tokens stay in memory. Nothing is written to disk and nothing is sent over the network. Use `--theme auto|dark|light` if the terminal detects the background wrong, `--no-color` for a plain UI, and `--no-vim-keys` to turn off the `ctrl+h/j/k/l` motions.
 
 The TUI is built with Bubble Tea, Bubbles, and Lip Gloss. They are pinned to versions that keep the project's Go 1.21 minimum. The core decode, audit, and verify paths do not change.
 
@@ -244,7 +260,7 @@ Every command has a human mode and a machine mode. Pretty output has status line
 
 The TUI does not decode JSON, change the key order, and re-encode it. Untouched panes keep the original base64 segments from the token you opened. The pane you edit is encoded from the exact text on screen. If a token arrives with unusual whitespace, or even duplicate keys, the untouched panes still encode to the same bytes. That is useful when two services disagree about what a token says.
 
-The visible JSON is pretty-printed for editing, but that view is not the source of truth for the token. The encoded pane is. The signature badge is equally literal: `UNTOUCHED` means loaded and not modified, `SIGNED` means this session computed it, `STALE` means the header or payload changed after signing, and `UNSIGNED` means there is no signature or `alg` is `none`. The editor never calls a signature valid without a key.
+The visible JSON is pretty-printed for editing, but that view is not the source of truth for the token. The encoded pane is. The signature status is equally literal: `UNTOUCHED` means loaded and not modified, `SIGNED` means this session computed it, `STALE` means the header or payload changed after signing, and `UNSIGNED` means there is no signature or `alg` is `none`. The editor never calls a signature valid without a key.
 
 ## Exit codes
 

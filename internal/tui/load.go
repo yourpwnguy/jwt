@@ -13,6 +13,9 @@ import (
 	"github.com/yourpwnguy/jwt/v2/internal/jwt"
 )
 
+// loadToken decodes a valid token into the editor. The visible JSON is
+// pretty-printed for editing, but the original segments are kept for
+// encoding until the user actually changes that pane.
 func (m *model) loadToken(raw string) error {
 	tok, err := jwt.Parse(raw)
 	if err != nil {
@@ -100,6 +103,3 @@ func (m model) segment(s section) string {
 func encodeSegment(text string) string {
 	return base64.RawURLEncoding.EncodeToString([]byte(text))
 }
-
-// focusSection blurs every widget and focuses the active one. The
-// returned command starts the cursor blink.

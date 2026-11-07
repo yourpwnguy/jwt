@@ -1,7 +1,6 @@
 package tui
 
 import (
-	"fmt"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -20,11 +19,8 @@ func (m *model) openAudit() tea.Cmd {
 
 func (m *model) openToken() tea.Cmd {
 	width := m.overlayWidth()
-	lines := m.wrappedToken(width)
-	lines = append(lines, "")
-	lines = append(lines, m.tokenMetaLines(width)...)
 	m.mode = modeToken
-	return m.setOverlay(lines)
+	return m.setOverlay(m.tokenPageContent(width))
 }
 
 func (m *model) openHelp() tea.Cmd {
@@ -42,11 +38,11 @@ func (m *model) setOverlay(lines []string) tea.Cmd {
 }
 
 func (m model) overlayWidth() int {
-	return max(20, m.width-10)
+	return max(20, m.layout().contentW)
 }
 
 func (m model) overlayHeight() int {
-	return max(4, m.height-11)
+	return max(4, m.layout().overlayH)
 }
 
 func (m *model) handleOverlayKey(msg tea.KeyMsg) tea.Cmd {
@@ -73,24 +69,6 @@ func (m *model) handleOverlayKey(msg tea.KeyMsg) tea.Cmd {
 		m.overlay, cmd = m.overlay.Update(msg)
 		return cmd
 	}
-}
-
-// tokenMetaLines is the small fact block under the full token. It is
-// also useful in tests because it spells out the honest signature state.
-func (m model) tokenMetaLines(width int) []string {
-	_, _, sig := m.tokenSegments()
-	state := m.theme.fg(m.sigColor()).Render(strings.ToLower(m.sigLabel()))
-	alg := m.alg
-	if alg == "" {
-		alg = "missing"
-	}
-	rows := []string{
-		m.theme.mutedStyle().Render(fmt.Sprintf("%-10s", "alg")) + m.theme.fg(m.theme.header).Render(alg),
-		m.theme.mutedStyle().Render(fmt.Sprintf("%-10s", "signature")) + state,
-		m.theme.mutedStyle().Render(fmt.Sprintf("%-10s", "size")) + m.theme.mutedStyle().Render(humanBytes(len(m.previewToken()))),
-		m.theme.mutedStyle().Render(fmt.Sprintf("%-10s", "sig chars")) + m.theme.mutedStyle().Render(fmt.Sprintf("%d", len(sig))),
-	}
-	return fitLines(rows, width, len(rows))
 }
 
 func (m model) sigColor() lipgloss.TerminalColor {

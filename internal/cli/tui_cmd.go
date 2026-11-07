@@ -19,10 +19,11 @@ import (
 
 func runTUI(ctx context.Context, args []string, stdin io.Reader, stdinIsTTY bool, stdout, stderr io.Writer) int {
 	var opts struct {
-		token   string
-		file    string
-		theme   string
-		noColor bool
+		token     string
+		file      string
+		theme     string
+		noColor   bool
+		noVimKeys bool
 	}
 	fs := flag.NewFlagSet("tui", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -31,6 +32,7 @@ func runTUI(ctx context.Context, args []string, stdin io.Reader, stdinIsTTY bool
 	fs.StringVar(&opts.file, "f", "", "file with one token")
 	fs.StringVar(&opts.theme, "theme", "", "auto, dark, or light")
 	fs.BoolVar(&opts.noColor, "no-color", false, "disable color")
+	fs.BoolVar(&opts.noVimKeys, "no-vim-keys", false, "disable ctrl+h/j/k/l motions")
 
 	flagArgs, positional := partitionArgs(fs, args)
 	if err := fs.Parse(flagArgs); err != nil {
@@ -81,6 +83,7 @@ func runTUI(ctx context.Context, args []string, stdin io.Reader, stdinIsTTY bool
 		Token:      token,
 		NoColor:    opts.noColor,
 		Theme:      tui.ThemeMode(opts.theme),
+		NoVimKeys:  opts.noVimKeys,
 		InputIsTTY: stdinIsTTY,
 		Input:      stdin,
 		Output:     stdout,
@@ -121,18 +124,24 @@ Examples:
   jwt tui -f token.txt            read one token from a file
 
 Options:
-  -t <token>      token to edit
-  -f <file>       file with one token
-  --theme         auto, dark, or light (default auto)
-  --no-color      plain text UI
-  -h              show this help
+  -t <token>        token to edit
+  -f <file>         file with one token
+  --theme           auto, dark, or light (default auto)
+  --no-color        plain text UI
+  --no-vim-keys     disable ctrl+h/j/k/l cursor motions
+  -h                show this help
 
 Keys:
+  arrows            move the cursor
+  ctrl+h / ctrl+l   move left / right
+  ctrl+j / ctrl+k   move down / up
   tab / shift+tab   next or previous section
   ctrl+o            command mode (esc works too)
                     f format, c compact, a audit, v token, q quit
   ctrl+s            sign the token
   ctrl+y            copy the encoded token
   ctrl+c            quit
+
+ctrl+i is the Tab key on a terminal, so it keeps switching sections.
 `)
 }

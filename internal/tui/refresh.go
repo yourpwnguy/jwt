@@ -14,7 +14,7 @@ import (
 
 // refresh.go is the single place that turns editor text into token
 // state. Every keystroke, format, sign, and resize path ends here, so
-// the token, signature badge, and audit can never disagree.
+// the token, signature status, and audit can never disagree.
 
 // refresh validates both JSON panes, assembles the current token, and
 // runs the audit when the token parses. Invalid JSON keeps the last
@@ -185,7 +185,7 @@ func lineCol(text string, offset int64) (line, col int) {
 	return line, col
 }
 
-// algFromHeader gets a useful badge value even when the signature
+// algFromHeader gets a useful alg value even when the signature
 // segment is malformed and full parsing fails.
 func algFromHeader(text string) string {
 	var h struct {
