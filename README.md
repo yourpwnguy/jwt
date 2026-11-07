@@ -232,7 +232,7 @@ This is the first token studio layout: cards on wide terminals, stacked editor a
 | `d{motion}` | Delete: `dd`, `dw`, `diw`, `daw` |
 | `s` | Change character |
 | `tab` / `shift+tab` | Next / previous section |
-| `ctrl+o` or `esc` | Normal mode |
+| `ctrl+o` or `esc` | Return to normal mode |
 | `1` / `2` / `3` | Header / payload / signature (normal mode) |
 | `y` | Copy the encoded token (normal mode) |
 | `?` | Help (normal mode) |
@@ -243,7 +243,7 @@ This is the first token studio layout: cards on wide terminals, stacked editor a
 
 The motions are on by default. `ctrl+i` is the Tab key at the terminal level, so it cannot be distinguished from Tab, and Tab keeps switching sections. `ctrl+h` and `ctrl+k` would otherwise be the textarea's delete aliases; Backspace and Delete still delete. If you would rather avoid the insert-mode control motions, start with `jwt tui --no-vim-keys`. Normal mode still uses plain `h/j/k/l`, because those are ordinary characters.
 
-`ctrl+o` is the recommended way into normal mode because it is a single control key. `esc` works too, but a very fast next keystroke can look like an Alt sequence to the terminal. Normal mode keeps a static block cursor on the current character, and `i` or `enter` goes back to editing at that position. App actions moved to the `:` line so `c`, `f`, `s`, `a`, and `v` stay free for editing.
+The editor starts in normal mode, exactly like Neovim. `i` or `enter` begins editing at the static block cursor; `esc` or `ctrl+o` returns to normal. `ctrl+o` is a single control key, so it is handy if a very fast `esc` looks like an Alt sequence to your terminal. App actions moved to the `:` line so `c`, `f`, `s`, `a`, and `v` stay free for editing.
 
 In insert mode, the JSON editors auto-close quotes, braces, brackets, and parentheses, leaving the cursor between the pair. Typing the closing character again steps over it. The inspector card also explains the key on the cursor line, or the nearest key above a bare value line, so `alg`, `exp`, `aud`, `kid`, and custom claims are documented while you move.
 

@@ -70,10 +70,34 @@ func sendText(t *testing.T, m model, text string) model {
 	return m
 }
 
+// beginEdit is the explicit transition tests use when they are about
+// insert-mode behavior. The real editor now starts in normal mode.
+func beginEdit(m model) model {
+	m.mode = modeEdit
+	m.focusSection()
+	return m
+}
+
 func setText(m *model, s section, text string) {
 	m.section = s
 	m.setSectionText(text)
 	m.refresh()
+}
+
+func TestStartsInNormalMode(t *testing.T) {
+	m := testModel(t, testToken, 120, 32)
+	if m.mode != modeCommand {
+		t.Fatalf("initial mode = %v, want normal", m.mode)
+	}
+	if !strings.Contains(m.View(), "NORMAL") {
+		t.Fatal("initial footer should say NORMAL")
+	}
+	if !m.header.Focused() {
+		t.Fatal("initial cursor should be focused")
+	}
+	if got := m.header.Cursor.Mode(); got != cursor.CursorStatic {
+		t.Fatalf("initial cursor mode = %v, want static", got)
+	}
 }
 
 func TestCommandModeKeepsACursor(t *testing.T) {
@@ -147,8 +171,7 @@ func TestNormalModeHJKLMoveTheCursor(t *testing.T) {
 func TestSignatureAndSignCancelRestoreTheCommandCursor(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
 	m.section = sectionSignature
-	m.focusSection()
-	m = send(t, m, "esc")
+	m.enterCommandMode()
 	if !m.signature.Focused() || m.signature.Cursor.Mode() != cursor.CursorStatic {
 		t.Fatal("signature cursor should be focused and static in command mode")
 	}
@@ -186,6 +209,7 @@ func TestOverlayCloseRestoresTheCommandCursor(t *testing.T) {
 
 func TestVimMotionsMoveTheCursor(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
+	m = beginEdit(m)
 	for m.header.Line() > 0 {
 		m.header.CursorUp()
 	}
@@ -230,6 +254,7 @@ func TestVimMotionsMoveTheCursor(t *testing.T) {
 
 func TestCtrlIStaysTab(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
+	m = beginEdit(m)
 	m = send(t, m, "tab") // KeyTab is the same byte as ctrl+i.
 	if m.section != sectionPayload {
 		t.Fatalf("ctrl+i changed section to %v, want payload", m.section)
@@ -239,7 +264,7 @@ func TestCtrlIStaysTab(t *testing.T) {
 func TestVimMotionsReachSignatureField(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
 	m.section = sectionSignature
-	m.focusSection()
+	m = beginEdit(m)
 	m.signature.SetCursor(0)
 
 	m = send(t, m, "ctrl+l")
@@ -263,6 +288,7 @@ func TestVimMotionsCanBeDisabled(t *testing.T) {
 		t.Fatalf("newModel: %v", err)
 	}
 	m.resize(120, 32)
+	m = beginEdit(m)
 	m.header.CursorStart()
 
 	m = send(t, m, "ctrl+l")
@@ -277,6 +303,7 @@ func TestVimMotionsCanBeDisabled(t *testing.T) {
 
 func TestEditMarksSignatureStale(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
+	m = beginEdit(m)
 	m = send(t, m, "tab")
 	if m.section != sectionPayload {
 		t.Fatalf("section = %v, want payload", m.section)
@@ -298,6 +325,7 @@ func TestEditMarksSignatureStale(t *testing.T) {
 
 func TestInvalidJSONKeepsLastValidToken(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
+	m = beginEdit(m)
 	m = send(t, m, "tab")
 	m = send(t, m, "x")
 
@@ -337,6 +365,7 @@ func TestInvalidJSONKeepsLastValidToken(t *testing.T) {
 
 func TestSignRoundTrip(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
+	m = beginEdit(m)
 	setText(&m, sectionPayload, " "+m.payload.Value())
 	if m.sigState != sigStale {
 		t.Fatalf("setup: sigState = %v, want stale", m.sigState)
@@ -371,6 +400,7 @@ func TestSignRoundTrip(t *testing.T) {
 
 func TestSignShortcutAndCancel(t *testing.T) {
 	m := testModel(t, testToken, 120, 32)
+	m = beginEdit(m)
 	m = send(t, m, "ctrl+s")
 	if m.mode != modeSign {
 		t.Fatalf("ctrl+s mode = %v, want sign", m.mode)
@@ -387,6 +417,7 @@ func TestSignShortcutAndCancel(t *testing.T) {
 func TestNoneAndUnsupportedSigning(t *testing.T) {
 	none := jwt.Encode([]byte(`{"alg":"none"}`), []byte(`{}`), "abc")
 	m := testModel(t, none, 120, 32)
+	m = beginEdit(m)
 	if m.sigState != sigUnsigned {
 		t.Fatalf("none sigState = %v, want unsigned", m.sigState)
 	}
@@ -400,6 +431,7 @@ func TestNoneAndUnsupportedSigning(t *testing.T) {
 
 	rs := jwt.Encode([]byte(`{"alg":"RS256"}`), []byte(`{}`), "")
 	m = testModel(t, rs, 120, 32)
+	m = beginEdit(m)
 	m.startSign()
 	if m.mode != modeEdit {
 		t.Fatalf("RS256 should not open the sign dialog, mode=%v", m.mode)
@@ -500,6 +532,7 @@ func TestHelpExplainsMotionsAndReservedKeys(t *testing.T) {
 		"ctrl+hjkl",
 		"ctrl+i is Tab",
 		"--no-vim-keys",
+		"starts in normal mode",
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("help missing %q", want)
@@ -921,6 +954,7 @@ func TestAutoPairQuotes(t *testing.T) {
 	m.section = sectionHeader
 	m.setSectionText(`{}`)
 	m.setActiveCursor(0, 1)
+	m = beginEdit(m)
 
 	m = send(t, m, `"`)
 	if got := m.header.Value(); got != `{""}` {
@@ -945,7 +979,7 @@ func TestAutoPairBrackets(t *testing.T) {
 	m.section = sectionPayload
 	m.setSectionText("")
 	m.setActiveCursor(0, 0)
-	m.focusSection()
+	m = beginEdit(m)
 
 	m = send(t, m, "{")
 	if got := m.payload.Value(); got != `{}` {
@@ -961,6 +995,7 @@ func TestAutoPairLeavesEscapedQuoteAlone(t *testing.T) {
 	m.section = sectionHeader
 	m.setSectionText("\"a\\")
 	m.setActiveCursor(0, 3)
+	m = beginEdit(m)
 
 	m = send(t, m, `"`)
 	if got := m.header.Value(); got != "\"a\\\"" {
@@ -973,6 +1008,7 @@ func TestAutoPairInsideStringDoesNotCloseBrackets(t *testing.T) {
 	m.section = sectionHeader
 	m.setSectionText(`{"a": "x`)
 	m.setActiveCursor(0, 8)
+	m = beginEdit(m)
 
 	m = send(t, m, "[")
 	if got := m.header.Value(); got != `{"a": "x[` {

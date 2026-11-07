@@ -184,7 +184,7 @@ func newModel(ctx context.Context, opts Options) (model, error) {
 		now:     opts.Now,
 		copyFn:  opts.Copy,
 		theme:   newTheme(opts.Theme),
-		mode:    modeEdit,
+		mode:    modeCommand,
 		section: sectionHeader,
 		vimKeys: !opts.NoVimKeys,
 		overlay: viewport.New(0, 0),
@@ -203,7 +203,10 @@ func newModel(ctx context.Context, opts Options) (model, error) {
 
 	m.resize(100, 30)
 	m.refresh()
-	m.startCmd = m.header.Focus()
+	// Normal mode is the default, exactly like Neovim. The first
+	// keystroke is a motion or i/enter/a/o, not a character in the
+	// buffer.
+	m.startCmd = m.enterCommandMode()
 	return m, nil
 }
 

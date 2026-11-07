@@ -131,12 +131,14 @@ Options:
   --no-vim-keys     disable ctrl+h/j/k/l cursor motions
   -h                show this help
 
+The editor starts in normal mode. Press i or enter to edit.
+
 Keys:
   arrows            move the cursor
   ctrl+h / ctrl+l   move left / right while editing
   ctrl+j / ctrl+k   move down / up while editing
   tab / shift+tab   next or previous section
-  ctrl+o or esc     normal mode
+  ctrl+o or esc     return to normal mode
   ctrl+s            sign the token
   ctrl+y            copy the encoded token
   ctrl+c            quit

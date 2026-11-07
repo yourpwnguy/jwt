@@ -82,7 +82,7 @@ func TestEveryPageFitsTheWindow(t *testing.T) {
 		masthead bool
 		open     func(*model)
 	}{
-		{"edit", "EDIT", true, func(m *model) {}},
+		{"edit", "EDIT", true, func(m *model) { m.mode = modeEdit; m.focusSection() }},
 		{"normal", "NORMAL", true, func(m *model) { m.enterCommandMode() }},
 		{"sign", "SIGN", false, func(m *model) { m.startSign() }},
 		{"help", "HELP", false, func(m *model) { m.openHelp() }},

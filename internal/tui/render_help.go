@@ -32,6 +32,7 @@ func (m model) helpContent(width int) []string {
 	lines = append(lines, m.helpRows(width)...)
 	lines = append(lines, "")
 	for _, note := range []string{
+		"The editor starts in normal mode. i or enter begins editing; esc returns.",
 		"Arrows always work. ctrl+i is Tab. --no-vim-keys disables ctrl+hjkl while editing.",
 		"Quotes and brackets auto-close in JSON; type the closer again to step over it.",
 		"The inspector explains the JSON key under the cursor.",
