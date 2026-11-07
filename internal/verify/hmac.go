@@ -4,53 +4,32 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
+	"errors"
 	"fmt"
 	"hash"
-	"os"
-	"strings"
 
 	"github.com/yourpwnguy/jwt/v2/internal/jwt"
+	"github.com/yourpwnguy/jwt/v2/internal/secret"
 )
 
 // hmac.go verifies HS256/384/512. Small file on purpose: HMAC logic
 // is three lines, the rest is security boundaries around secrets.
 
-// loadHMACSecret resolves --secret into bytes.
-// "@path" loads from file (trailing newline trimmed for text secrets);
-// "raw:" forces literal; bare values are literal. Empty is rejected —
-// an empty HMAC key is public knowledge, not a secret.
-func loadHMACSecret(secret string) ([]byte, error) {
-	if secret == "" {
-		return nil, fmt.Errorf("empty HMAC secret: provide --secret")
+// loadHMACSecret resolves --secret into bytes and adds CLI-specific
+// hints to the shared loader's refusals. The TUI uses the same loader
+// without the hints because it has no --pubkey/--jwks flags.
+func loadHMACSecret(spec string) ([]byte, error) {
+	raw, err := secret.LoadHMAC(spec)
+	if err == nil {
+		return raw, nil
 	}
-	raw := secret
-	if strings.HasPrefix(secret, "raw:") {
-		raw = strings.TrimPrefix(secret, "raw:")
-	} else if strings.HasPrefix(secret, "@") || isExistingFile(secret) {
-		path := strings.TrimPrefix(secret, "@")
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read secret file: %w", err)
-		}
-		raw = string(data)
-		// Text secrets from echo often carry "\n"; binary keys must not
-		// be trimmed, so only trim printable ASCII with newline endings.
-		if isPrintableASCII(raw) {
-			raw = strings.TrimRight(raw, "\r\n")
-		}
+	if errors.Is(err, secret.ErrEmpty) {
+		return nil, fmt.Errorf("%w: provide --secret", err)
 	}
-	if raw == "" {
-		return nil, fmt.Errorf("empty HMAC secret: provide --secret")
+	if errors.Is(err, secret.ErrPEMKey) || errors.Is(err, secret.ErrCertificate) {
+		return nil, fmt.Errorf("%w; use --pubkey/--jwks for RSA tokens", err)
 	}
-	// Key-confusion guard: a PEM block is a PUBLIC key. Using it as an
-	// HMAC secret would let anyone forge tokens. Fail loudly.
-	if strings.Contains(raw, "BEGIN ") && strings.Contains(raw, "KEY") {
-		return nil, fmt.Errorf("secret looks like a PEM public key, refusing (RS256 to HS256 confusion attack); use --pubkey/--jwks for RSA tokens")
-	}
-	if strings.Contains(raw, "BEGIN CERTIFICATE") {
-		return nil, fmt.Errorf("secret looks like a certificate, refusing; use --pubkey/--jwks for RSA tokens")
-	}
-	return []byte(raw), nil
+	return nil, err
 }
 
 // verifyHMAC recomputes the MAC over tok.SigningInput and compares.
@@ -74,25 +53,4 @@ func verifyHMAC(tok jwt.Token, alg string, secret []byte) (bool, error) {
 		return false, err
 	}
 	return subtleEqual(expected, sig), nil
-}
-
-// isExistingFile reports whether path exists and is not a directory.
-// It keeps "@"-less file paths working without mistaking secrets for files.
-func isExistingFile(path string) bool {
-	fi, err := os.Stat(path)
-	return err == nil && !fi.IsDir()
-}
-
-// isPrintableASCII allows safe newline-trimming only for text secrets.
-func isPrintableASCII(s string) bool {
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if c == '\t' || c == '\r' || c == '\n' {
-			continue
-		}
-		if c < 0x20 || c > 0x7e {
-			return false
-		}
-	}
-	return true
 }

@@ -1,4 +1,4 @@
-// Command jwt decodes, audits, and verifies JWTs offline.
+// Command jwt decodes, edits, audits, and verifies JWTs offline.
 //
 // Thin entry point by design: all logic lives in internal/cli so main
 // only wires OS resources (args, stdio, signals) and maps the exit code.

@@ -10,7 +10,7 @@ import (
 )
 
 // usage.go owns help text and stderr helpers.
-// Writers are injected so tests can capture output — never os.Stderr directly.
+// Writers are injected so tests can capture output, never os.Stderr directly.
 
 var style = gostyle.New()
 
@@ -45,12 +45,13 @@ func isTerminalWriter(w io.Writer) bool {
 func printUsage(w io.Writer) {
 	fmt.Fprint(w, `Usage: jwt [command] [options] [token]
 
-Decode, audit, and verify JWTs offline. Secrets never leave your machine.
+Decode, edit, audit, and verify JWTs offline. Secrets never leave your machine.
 
 Commands:
   decode   Decode tokens (default when no command given)
   audit    Passive security checks (no network, no secrets)
   verify   Check signature + exp/nbf/aud/iss
+  tui      Live token editor (interactive)
   version  Print version
 
 Decode examples:
@@ -73,6 +74,11 @@ Verify examples:
   jwt verify <token> --secret s3cr3t
   jwt verify <token> --pubkey @key.pem --aud api --iss auth.example.com
   jwt verify <token> --jwks https://auth/.well-known/jwks.json
+
+Editor examples:
+  jwt tui <token>                 edit with live encoding and audit
+  echo $TOKEN | jwt tui           edit a piped token
+  jwt tui                         start from a blank token
 
 Flags (decode):
   -t <token>      single token (compat)
@@ -107,7 +113,7 @@ func parseLeeway(s string) (time.Duration, error) {
 }
 
 // parseFormat validates -o/--format. Unknown values error instead of
-// silently falling back to pretty — a misspelled format that ignores
+// silently falling back to pretty. A misspelled format that ignores
 // your scripting choice is worse than an error.
 func parseFormat(s string) (string, error) {
 	switch s {

@@ -1,13 +1,14 @@
 // Package cli is the thin wiring between OS and domain: flags in,
-// exit codes out. It owns no JWT logic — parsing lives in internal/jwt,
-// input collecting in internal/input, rendering in internal/output.
+// exit codes out. It owns no JWT logic: parsing lives in internal/jwt,
+// input collecting in internal/input, rendering in internal/output,
+// and the interactive editor in internal/tui.
 //
 // Exit contract (stable for scripts):
 //
-//	0 — success (decoded; audit passed; signature+claims valid)
-//	1 — system error (bad flags, no input, unreadable file, malformed
-//	    token, missing keys, network failure)
-//	2 — validation failure (expired with --verify-exp, audit --fail-on
+//	0: success (decoded; audit passed; signature+claims valid; TUI quit)
+//	1: system error (bad flags, no input, unreadable file, malformed
+//	    token, missing keys, network failure, no interactive terminal)
+//	2: validation failure (expired with --verify-exp, audit --fail-on
 //	    breached, signature invalid, claims invalid)
 package cli
 
@@ -39,6 +40,8 @@ func Run(ctx context.Context, args []string, stdin io.Reader, stdinIsTTY bool, s
 		return runAudit(ctx, args[1:], stdin, stdinIsTTY, stdout, stderr)
 	case "verify":
 		return runVerify(ctx, args[1:], stdin, stdinIsTTY, stdout, stderr)
+	case "tui":
+		return runTUI(ctx, args[1:], stdin, stdinIsTTY, stdout, stderr)
 	case "version", "-v", "--version":
 		printVersion(stderr)
 		return ExitOK

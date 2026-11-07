@@ -3,7 +3,7 @@
 ![Jwt LOGO](https://i.imgur.com/YcATkTY.png)
 
 </div>
-<h4 align="center">Simple, fast, and efficient tool for decoding, auditing, and verifying JWT tokens, fully offline.</h4>
+<h4 align="center">Simple, fast, and efficient tool for decoding, editing, auditing, and verifying JWT tokens, fully offline.</h4>
 <p align="center">
 <img src="https://img.shields.io/github/go-mod/go-version/yourpwnguy/jwt">
 <a href="https://github.com/yourpwnguy/jwt/graphs/contributors"><img src="https://img.shields.io/github/contributors-anon/yourpwnguy/jwt">
@@ -23,6 +23,7 @@
 - Single claim lookup with `--claim`.
 - Passive security audit with severity levels and CI gates.
 - Signature verification for HMAC, RSA, ECDSA, and EdDSA, with JWKS support.
+- Live token editor with `jwt tui`: edit header and payload, watch the encoded token and audit update, sign HMAC tokens, and copy the result.
 - Stable exit codes for scripts and CI.
 
 ## Installation 🛠️
@@ -43,6 +44,7 @@ Commands:
   decode   Decode tokens (default when no command is given)
   audit    Passive security checks, no network, no secrets
   verify   Check signature and exp, nbf, aud, iss
+  tui      Live token editor, interactive
   version  Print version and exit
 
 Decode examples:
@@ -65,6 +67,12 @@ Verify examples:
   jwt verify <token> --secret s3cr3t
   jwt verify <token> --pubkey @key.pem --aud api --iss auth.example.com
   jwt verify <token> --jwks https://auth.example.com/.well-known/jwks.json
+
+Editor examples:
+  jwt tui <token>                 edit with live encoding and audit
+  echo $TOKEN | jwt tui           edit a piped token
+  jwt tui -f token.txt            edit one token from a file
+  jwt tui                         start from a blank token
 
 Options (decode):
   -t <token>      single token
@@ -163,6 +171,57 @@ $ jwt verify -t "$TOKEN" --secret "your-256-bit-secret"
 
 ---
 
+### TUI:
+
+```bash
+$ jwt tui "$TOKEN"
+```
+
+```text
+JWT ●●●  token studio                                HS256  UNTOUCHED  ✗ 1 ISSUE
+
+● HEADER   ○ PAYLOAD   ○ SIGNATURE
+╭────────────────────────────────╮  ╭─ ENCODED TOKEN ──────────────────╮
+│ 1 {                            │  │ eyJhbGciOiJIUzI1NiIsInR5cCI6...    │
+│ 2   "alg": "HS256",            │  │ .eyJzdWIiOiIxMjM0NTY3ODkwIiw...    │
+│ 3   "typ": "JWT"               │  │ .SflKxwRJSMeKKF2QT4fwpMeJf36...    │
+│ 4 }                            │  │                                    │
+│                                │  │ signature  untouched              │
+│                                │  │ exp        no exp claim           │
+│                                │  │ size       155 B                  │
+│                                │  │ AUDIT  ✗ 1 issue                  │
+│                                │  │ HIGH  missing-exp                 │
+╰────────────────────────────────╯  ╰───────────────────────────────────╯
+
+EDIT   ctrl+s sign · ctrl+y copy · ctrl+o commands · tab section
+```
+
+The editor is a live scratchpad. Header and payload are plain JSON. The right side shows the exact token, the honest signature state, and the audit summary. Every valid keystroke rebuilds the token from the current segments and re-runs the offline audit.
+
+| Key | Action |
+| --- | --- |
+| `tab` / `shift+tab` | Next / previous section |
+| `ctrl+o` or `esc` | Command mode |
+| `ctrl+s` | Sign the token |
+| `ctrl+y` | Copy the encoded token |
+| `1` / `2` / `3` | Header / payload / signature (command mode) |
+| `f` / `c` | Format / compact the current JSON (command mode) |
+| `a` / `v` / `?` | Audit / full token / help (command mode) |
+| `i` or `enter` | Back to editing (command mode) |
+| `q` | Quit (command mode, or `ctrl+c` anywhere) |
+
+`ctrl+o` is the recommended way into command mode because it is a single control key. `esc` works too, but a very fast next keystroke can look like an Alt sequence to the terminal.
+
+The Signature tab is editable. You can paste a base64url signature produced by another tool. If the header or payload changes after a signature, the badge turns `STALE` and copying warns you. `ctrl+s` re-signs HMAC tokens with the secret you enter. Asymmetric signing is not in this build, so RS, PS, ES, and EdDSA tokens can still be edited, audited, and copied, but their signature will be marked stale until you paste or generate a new one.
+
+The editor never rewrites a token silently. Untouched panes keep their original base64 segments, and edited panes encode the exact text on screen, including whitespace and duplicate keys. That matters when you are testing how different parsers treat the same token. The editor shows pretty JSON, but the right side is the real bytes.
+
+Copy uses OSC 52, so it works over SSH in terminals that support it. Secrets and tokens stay in memory. Nothing is written to disk and nothing is sent over the network. Use `--theme auto|dark|light` if the terminal detects the background wrong, and `--no-color` for a plain UI.
+
+The TUI is built with Bubble Tea, Bubbles, and Lip Gloss. They are pinned to versions that keep the project's Go 1.21 minimum. The core decode, audit, and verify paths do not change.
+
+---
+
 # The long version, and why it is built this way
 
 This part covers what happens under the hood. The quick start above is enough to use the tool. Everything below is the reasoning behind it.
@@ -171,7 +230,7 @@ The goal is a tool for terminals, where tokens actually live. API responses, log
 
 ## Decoding is not verifying
 
-Seeing what is inside a token and trusting a token are different things, so the code keeps them apart. `internal/jwt` only decodes, with no crypto and no network. `internal/verify` handles trust decisions and is the only place that touches secrets. The audit package only reads structure. It takes no secrets and makes no network calls, so it is safe to run on dumps that are not trusted yet.
+Seeing what is inside a token and trusting a token are different things, so the code keeps them apart. `internal/jwt` only decodes, with no crypto and no network. `internal/verify` handles trust decisions and is the only place that checks a signature or fetches keys. `internal/secret` owns secret loading, and `internal/sign` computes HMAC signatures for the editor. The audit package only reads structure. It takes no secrets and makes no network calls, so it is safe to run on dumps that are not trusted yet.
 
 ## Forgiving input, strict parsing
 
@@ -181,9 +240,15 @@ Tokens arrive messy in practice. `Bearer` prefixes from headers, quotes from JSO
 
 Every command has a human mode and a machine mode. Pretty output has status lines, symbols, and colors. JSON and compact output have none of that, so `jwt -o json | jq` always works. Errors go to stderr for the same reason.
 
+## The editor keeps exact bytes
+
+The TUI does not decode JSON, change the key order, and re-encode it. Untouched panes keep the original base64 segments from the token you opened. The pane you edit is encoded from the exact text on screen. If a token arrives with unusual whitespace, or even duplicate keys, the untouched panes still encode to the same bytes. That is useful when two services disagree about what a token says.
+
+The visible JSON is pretty-printed for editing, but that view is not the source of truth for the token. The encoded pane is. The signature badge is equally literal: `UNTOUCHED` means loaded and not modified, `SIGNED` means this session computed it, `STALE` means the header or payload changed after signing, and `UNSIGNED` means there is no signature or `alg` is `none`. The editor never calls a signature valid without a key.
+
 ## Exit codes
 
-`0` means success. `1` means a system error, such as bad flags or an unreadable file. `2` means validation failed, such as an expired token or a breached audit gate.
+`0` means success. `1` means a system error, such as bad flags or an unreadable file. `2` means validation failed, such as an expired token or a breached audit gate. The TUI follows the same rule: quitting normally is `0`, a missing terminal or launch failure is `1`.
 
 ## Project layout
 
@@ -195,14 +260,17 @@ The code is split into small packages, each with a clear boundary:
 - `internal/input` owns where tokens come from. Args, files, stdin, Bearer stripping, extraction.
 - `internal/output` owns rendering. The only place that prints to stdout.
 - `internal/audit` owns the passive security rules. Pure functions, safe for concurrent use.
-- `internal/verify` owns signatures and claims. The only place that touches secrets or network.
+- `internal/verify` owns signatures and claims. The only place that checks trust or fetches keys.
+- `internal/sign` computes HMAC signatures for the editor. No trust decisions.
+- `internal/secret` loads HMAC secrets and rejects PEM key material, so verify and the editor share one confusion guard.
+- `internal/tui` owns the interactive editor. Rendering and keyboard flow only.
 - `internal/reader` and `internal/version` are tiny helpers for files and version info.
 
 ## But why use our tool
 
-jwt.io works well for a quick look at a single token. But production tokens should not be pasted into websites, and a browser cannot grep logs or fail builds. This tool runs locally, handles thousands of tokens at once, and fits into existing pipes.
+jwt.io works well for a quick look at a single token. But production tokens should not be pasted into websites, and a browser cannot grep logs or fail builds. This tool runs locally, handles thousands of tokens at once, and fits into existing pipes. The TUI keeps the same rule: you can edit and re-sign a token without it leaving your machine.
 
-Tools like `jwt-cli` and `jwt-hack` cover similar ground. This one prioritizes clean boundaries and reliability over feature count. Decode, audit, and verify answer different questions, so they stay separate.
+Tools like `jwt-cli` and `jwt-hack` cover similar ground. This one prioritizes clean boundaries and reliability over feature count. Decode, edit, audit, and verify answer different questions, so they stay separate.
 
 ## Contributing 🤝
 
