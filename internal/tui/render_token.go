@@ -28,7 +28,7 @@ func (m model) tokenPageContent(width int) []string {
 	lines = append(lines, "")
 	lines = append(lines, m.tokenSegment("SIGNATURE", sig, m.theme.signature, width)...)
 	lines = append(lines, "")
-	lines = append(lines, m.rule(width, m.theme.hairline))
+	lines = append(lines, m.rule(width))
 	lines = append(lines, "")
 	lines = append(lines, m.tokenMetaLines(width)...)
 	return lines

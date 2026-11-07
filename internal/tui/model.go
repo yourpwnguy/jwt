@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -16,7 +17,7 @@ import (
 )
 
 // model.go defines the editor state. The state machine is deliberately
-// small: one mode, one active section, three widgets, and the derived
+// small: one mode, one active section, four widgets, and the derived
 // token state. Everything user-visible is recomputed in refresh().
 type model struct {
 	ctx    context.Context
@@ -33,11 +34,18 @@ type model struct {
 	payload   textarea.Model
 	signature textinput.Model
 	secret    textinput.Model
+	command   textinput.Model
 
 	secretSpec   string
 	revealSecret bool
 	signErr      error
 	signReturn   mode
+
+	// pending is the first key of a two-key Neovim command. "f" waits
+	// for a character to find, and "c" waits for a motion. lastFind is
+	// the target of the most recent f, so ";" can repeat it.
+	pending  string
+	lastFind rune
 
 	// Original token. Untouched panes keep these exact segments so
 	// opening a token never silently changes it.
@@ -75,11 +83,6 @@ type model struct {
 	toastK   toastKind
 	toastID  int
 
-	// stamp is the short letterpress animation after a successful
-	// signature. Zero means idle.
-	stamp   int
-	stampID int
-
 	overlay viewport.Model
 }
 
@@ -109,6 +112,7 @@ type mode int
 const (
 	modeEdit mode = iota
 	modeCommand
+	modeEx
 	modeSign
 	modeAudit
 	modeHelp
@@ -189,6 +193,7 @@ func newModel(ctx context.Context, opts Options) (model, error) {
 	m.payload = newTextarea(m.theme, sectionPayload)
 	m.signature = newSignatureInput(m.theme)
 	m.secret = newSecretInput(m.theme)
+	m.command = newCommandInput(m.theme)
 
 	if strings.TrimSpace(opts.Token) == "" {
 		m.loadBlank()
@@ -202,24 +207,61 @@ func newModel(ctx context.Context, opts Options) (model, error) {
 	return m, nil
 }
 
-// focusSection blurs every widget and focuses the active one. The
-// returned command starts the cursor blink.
+// focusSection blurs every widget and focuses the active one with a
+// blinking insert-mode cursor. The returned command starts the blink.
 func (m *model) focusSection() tea.Cmd {
-	m.header.Blur()
-	m.payload.Blur()
-	m.signature.Blur()
-	m.secret.Blur()
+	m.pending = ""
+	m.blurAll()
+	m.setActiveCursorMode(cursor.CursorBlink)
+	return m.focusActive()
+}
 
-	var cmd tea.Cmd
+// enterCommandMode is the normal-mode transition. The cursor stays
+// visible as a static block on the current character, exactly where i
+// will put you back into editing. Blurring everything would make the
+// cursor vanish and leave no position marker on the page.
+func (m *model) enterCommandMode() tea.Cmd {
+	m.mode = modeCommand
+	m.pending = ""
+	m.blurAll()
+	m.setActiveCursorMode(cursor.CursorStatic)
+	return m.focusActive()
+}
+
+// focusNormal is enterCommandMode without changing the current mode.
+// Section switches use it so normal mode stays normal.
+func (m *model) focusNormal() tea.Cmd {
+	m.blurAll()
+	m.setActiveCursorMode(cursor.CursorStatic)
+	return m.focusActive()
+}
+
+// focusActive focuses the widget for the active section, without
+// changing its cursor mode. Callers set blink or static first.
+func (m *model) focusActive() tea.Cmd {
 	switch m.section {
 	case sectionHeader:
-		cmd = m.header.Focus()
+		return m.header.Focus()
 	case sectionPayload:
-		cmd = m.payload.Focus()
+		return m.payload.Focus()
 	case sectionSignature:
-		cmd = m.signature.Focus()
+		return m.signature.Focus()
 	}
-	return cmd
+	return nil
+}
+
+// setActiveCursorMode changes only the active widget's cursor. The
+// returned blink command is intentionally ignored: focusActive starts
+// the blink loop for insert mode, and static mode schedules nothing.
+func (m *model) setActiveCursorMode(mode cursor.Mode) {
+	switch m.section {
+	case sectionHeader:
+		m.header.Cursor.SetMode(mode)
+	case sectionPayload:
+		m.payload.Cursor.SetMode(mode)
+	case sectionSignature:
+		m.signature.Cursor.SetMode(mode)
+	}
 }
 
 func (m *model) blurAll() {
@@ -227,4 +269,5 @@ func (m *model) blurAll() {
 	m.payload.Blur()
 	m.signature.Blur()
 	m.secret.Blur()
+	m.command.Blur()
 }

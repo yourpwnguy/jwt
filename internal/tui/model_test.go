@@ -77,15 +77,17 @@ func TestEveryPageFitsTheWindow(t *testing.T) {
 		{120, 32}, {108, 28}, {100, 30}, {84, 16}, {80, 24}, {60, 16},
 	}
 	pages := []struct {
-		name   string
-		footer string
-		open   func(*model)
+		name     string
+		footer   string
+		masthead bool
+		open     func(*model)
 	}{
-		{"edit", "● EDIT", func(m *model) {}},
-		{"sign", "● SIGN", func(m *model) { m.startSign() }},
-		{"help", "● HELP", func(m *model) { m.openHelp() }},
-		{"audit", "● AUDIT", func(m *model) { m.openAudit() }},
-		{"token", "● TOKEN", func(m *model) { m.openToken() }},
+		{"edit", "EDIT", true, func(m *model) {}},
+		{"normal", "NORMAL", true, func(m *model) { m.enterCommandMode() }},
+		{"sign", "SIGN", false, func(m *model) { m.startSign() }},
+		{"help", "HELP", false, func(m *model) { m.openHelp() }},
+		{"audit", "AUDIT", false, func(m *model) { m.openAudit() }},
+		{"token", "TOKEN", false, func(m *model) { m.openToken() }},
 	}
 	for _, size := range sizes {
 		for _, page := range pages {
@@ -98,7 +100,7 @@ func TestEveryPageFitsTheWindow(t *testing.T) {
 			if !strings.Contains(view, page.footer) {
 				t.Errorf("%s %dx%d: footer is clipped", page.name, size.w, size.h)
 			}
-			if !strings.Contains(view, "JWT.") {
+			if page.masthead && !strings.Contains(view, "JWT") {
 				t.Errorf("%s %dx%d: masthead is clipped", page.name, size.w, size.h)
 			}
 			for i, line := range strings.Split(view, "\n") {
@@ -120,7 +122,7 @@ func TestResizeWhileOverlaysOpen(t *testing.T) {
 
 	m = testModel(t, testToken, 120, 32)
 	m = send(t, m, "esc")
-	m = send(t, m, "a")
+	m.openAudit()
 	updated, _ = m.Update(tea.WindowSizeMsg{Width: 60, Height: 16})
 	if view := updated.(model).View(); view == "" {
 		t.Fatal("audit overlay vanished after resize")

@@ -1,9 +1,9 @@
 package tui
 
 // canvas.go is the page geometry layer. It pads, truncates, joins, and
-// paints lines so every screen ends up exactly width by height. The
-// palette is applied at the very end: one background wash behind the
-// whole page, with panel backgrounds layered on top.
+// fits lines so every screen ends up exactly width by height. The card
+// design paints no page background, so finish() is only a safety net:
+// it pads the frame and leaves every empty cell transparent.
 //
 // The helpers here are deliberately ANSI-aware. lipgloss.Width and
 // ansi.Truncate understand escape sequences, so styled text can be
@@ -14,7 +14,6 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
-	"github.com/muesli/termenv"
 )
 
 func padLine(line string, width int) string {
@@ -57,7 +56,7 @@ func joinLR(left, right string, width int) string {
 }
 
 // joinLRKeepLeft keeps the left side intact and truncates the right
-// side. The tab row uses it so a long caption never hides a tab.
+// side. The masthead uses it so a long status never hides the tabs.
 func joinLRKeepLeft(left, right string, width int) string {
 	if width <= 0 {
 		return ""
@@ -80,8 +79,8 @@ func joinLRKeepLeft(left, right string, width int) string {
 	return left + strings.Repeat(" ", gap) + right
 }
 
-// fitAndPad is the last line of defence: no renderer can push the
-// footer off screen, and every line is exactly width cells wide.
+// fitAndPad is the last line of defence: no renderer can push the key
+// line off screen, and every line is exactly width cells wide.
 func fitAndPad(lines []string, width, height int) []string {
 	if height < 0 {
 		height = 0
@@ -120,90 +119,19 @@ func wrapPlain(text string, width int) []string {
 	return strings.Split(lipgloss.NewStyle().Width(width).Render(text), "\n")
 }
 
-// bgSequence returns just the SGR prefix for a background color. Lip
-// Gloss does not expose the escape sequence, and wrapping a line in a
-// background style is not enough: an inner reset clears the background
-// for every cell after it. We need the raw sequence so paintBG can put
-// it back after each reset.
-func bgSequence(c lipgloss.TerminalColor) string {
-	if lipgloss.ColorProfile() == termenv.Ascii {
-		return ""
-	}
-	probe := lipgloss.NewStyle().Background(c).Render(" ")
-	if i := strings.LastIndexByte(probe, ' '); i >= 0 {
-		return probe[:i]
-	}
-	return ""
-}
-
-// paintBG forces one base background across a finished line. Inner
-// styles that set their own background are preserved because their
-// sequence follows the base sequence. The final reset keeps the next
-// line independent.
-func paintBG(line, seq string) string {
-	if seq == "" {
-		return line
-	}
-	line = strings.ReplaceAll(line, "\x1b[0m", "\x1b[0m"+seq)
-	line = strings.ReplaceAll(line, "\x1b[m", "\x1b[m"+seq)
-	line = strings.ReplaceAll(line, "\x1b[49m", "\x1b[49m"+seq)
-	return seq + line + "\x1b[0m"
-}
-
-// finish pads the page to the terminal size, paints the canvas, and
-// joins the lines. Painting last means every gap, including the outer
-// margins, gets the same paper or ink color.
+// finish pads the page to the terminal size and joins the lines. It
+// intentionally does not paint a background: the card design lets the
+// terminal background through, including the outer rows and every gap.
 func (m model) finish(s string) string {
 	lines := fitAndPad(strings.Split(s, "\n"), m.width, m.height)
-	seq := bgSequence(m.theme.canvas)
-	for i, line := range lines {
-		lines[i] = paintBG(line, seq)
-	}
 	return strings.Join(lines, "\n")
 }
 
-func (m model) rule(width int, color lipgloss.TerminalColor) string {
+// rule draws a hairline using the muted text color. The card design
+// keeps rules inside the panels rather than across the whole page.
+func (m model) rule(width int) string {
 	if width <= 0 {
 		return ""
 	}
-	return m.theme.fg(color).Render(strings.Repeat("─", width))
-}
-
-// frame puts the horizontal margins around a finished content line.
-func frame(line string, margin, contentW int) string {
-	return strings.Repeat(" ", margin) + padLine(line, contentW) + strings.Repeat(" ", margin)
-}
-
-// displayNumber draws a big page number in a 5x5 block font. It is the
-// one piece of display type in the interface: the active section in the
-// wide rail. The shapes are deliberately simple, not a full typeface.
-func displayNumber(n int) []string {
-	digits := map[int][5]string{
-		0: {"█████", "██ ██", "██ ██", "██ ██", "█████"},
-		1: {"   ██", "  ███", "   ██", "   ██", " █████"},
-		2: {"█████", "   ██", "█████", "██   ", "█████"},
-		3: {"█████", "   ██", "█████", "   ██", "█████"},
-	}
-	first := n / 10
-	second := n % 10
-	a, okA := digits[first]
-	b, okB := digits[second]
-	if !okA || !okB {
-		return []string{"", "", "", "", ""}
-	}
-	out := make([]string, 5)
-	for i := 0; i < 5; i++ {
-		out[i] = a[i] + " " + b[i]
-	}
-	return out
-}
-
-// renderBlock renders each line of a multi-line block in one style and
-// keeps the block width-clean.
-func renderBlock(lines []string, style lipgloss.Style) []string {
-	out := make([]string, len(lines))
-	for i, line := range lines {
-		out[i] = style.Render(line)
-	}
-	return out
+	return m.theme.mutedStyle().Render(strings.Repeat("─", width))
 }

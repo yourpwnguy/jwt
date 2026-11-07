@@ -178,61 +178,80 @@ $ jwt tui "$TOKEN"
 ```
 
 ```text
-  JWT.   T O K E N  P R E S S                                            ● HS256   ● UNTOUCHED   ● 1 ISSUE
-  ────────────────────────────────────────────────────────────────────────────────────────────────────────
+JWT ●●●  token studio                                                                   HS256    UNTOUCHED    ✗ 1 ISSUE
 
-   █████    ██       1 {                                                 │  ENCODED TOKEN          155 B
-   ██ ██   ███       2   "alg": "HS256",                                 │
-   ██ ██    ██       3   "typ": "JWT"                                    │  eyJhbGciOiJIUzI1NiIsInR5cCI6
-   ██ ██    ██       4 }                                                 │  IkpXVCJ9.eyJzdWIiOiIxMjM0NTY
-   █████  █████                                                          │  3ODkwIiwibmFtZSI6IkpvaG4gRG9
-                                                                         │  lIiwiaWF0IjoxNTE2MjM5MDIyfQ.
-   HEADER                                                                │  SflKxwRJSMeKKF2QT4fwpMeJf36P
-   ━━━━━━                                                                │  Ok6yJV_adQssw5c
-                                                                         │
-   OBJECT                                                                │  ────────────────────────────
-   valid                                                                 │  ALG       HS256
-   2 keys                                                                │  SIGNATURE untouched
-   original                                                              │  EXPIRES   no exp claim
-                                                                         │  SIZE      155 B
-   ✓ 02 PAYLOAD                                                          │  ────────────────────────────
-                                                                         │  AUDIT              ✗ 1 ISSUE
-   ◇ 03 SIGNATURE                                                        │  ● ● ● ● ● ● ● ●
-                                                                         │  ✗ HIGH  missing-exp
-                                                                         │  no exp claim, stolen
-                                                                         │  tokens never expire
+ ● HEADER   ○ PAYLOAD  ○ SIGNATURE                                                           exact bytes · no re-marshal
+╭──────────────────────────────────────────────────────────────╮  ╭────────────────────────────────────────────────────╮
+│  1 {                                                         │  │ ENCODED TOKEN                                155 B │
+│  2   "alg": "HS256",                                         │  │                                                    │
+│  3   "typ": "JWT"                                            │  │ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxM │
+│  4 }                                                         │  │ jM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE │
+│                                                              │  │ 2MjM5MDIyfQ.                                       │
+│                                                              │  │ SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c        │
+│                                                              │  │                                                    │
+│                                                              │  │ ────────────────────────────────────────────────── │
+│                                                              │  │ signature untouched                                │
+│                                                              │  │ alg       HS256                                    │
+│                                                              │  │ exp       no exp claim (never expires)             │
+│                                                              │  │ size      155 B                                    │
+│                                                              │  │                                                    │
+│                                                              │  │ ────────────────────────────────────────────────── │
+│                                                              │  │ PROPERTY  alg                                      │
+│                                                              │  │ Signing algorithm. HS256/384/512 share a secret;   │
+│                                                              │  │ RS/PS/ES/EdDSA use a key pair.                     │
+│                                                              │  │ type string · value "HS256"                        │
+│                                                              │  │                                                    │
+│                                                              │  │ ────────────────────────────────────────────────── │
+│                                                              │  │ AUDIT  ✗ 1 issue                                   │
+│                                                              │  │ ✗ HIGH     missing-exp                             │
+│                                                              │  │   no exp claim, stolen tokens never expire         │
+│                                                              │  │ ✓ 7 checks passed                                  │
+│                                                              │  │ none-alg · jku-x5u · weak-alg · long-lived · kid · │
+╰──────────────────────────────────────────────────────────────╯  ╰────────────────────────────────────────────────────╯
 
-  ────────────────────────────────────────────────────────────────────────────────────────────────────────
-  ● EDIT   ctrl+hjkl move · tab section · ctrl+s sign · ctrl+y copy · ctrl+o command                L4  C2
+ NORMAL    hjkl move · w/b words · 0/$ ends · f{char} find · i edit · : command · ? help
 ```
 
-The editor is a live scratchpad. Header and payload are plain JSON. The token panel shows the exact encoded token, the honest signature state, and the audit summary. Every valid keystroke rebuilds the token from the current segments and re-runs the offline audit.
+The editor is a live scratchpad. Header and payload are plain JSON, the token inspector always shows the exact encoded bytes, and the audit summary updates as you type. The three section colors still come from the logo: amber header, coral payload, cyan signature.
 
-The section rail, the page number, and the accent color follow the active section. Narrower terminals turn the rail into a tab row, and the narrowest move the token under the editor, so the same information survives at 60 columns.
+This is the first token studio layout: cards on wide terminals, stacked editor and token on narrow ones. The page paints no background, so the terminal background shows through. Filled pills are reserved for status and the active tab; the editor itself is plain text inside a hairline card.
 
 | Key | Action |
 | --- | --- |
 | `arrows` | Move the cursor, always available |
-| `ctrl+h` / `ctrl+j` / `ctrl+k` / `ctrl+l` | Move left / down / up / right, Vim style |
+| `ctrl+h` / `ctrl+j` / `ctrl+k` / `ctrl+l` | Move while editing |
+| `h` / `j` / `k` / `l` | Move in normal mode |
+| `w` / `b` | Next / previous word |
+| `0` / `$` | Start / end of line |
+| `f{char}` / `;` | Find / repeat find |
+| `gg` / `G` | First / last line |
+| `i` / `enter` | Insert at the cursor |
+| `a` | Append after the cursor |
+| `o` / `O` | Open a line below / above and insert |
+| `c{motion}` | Change: `cw`, `cb`, `c$`, `cc` |
+| `d{motion}` | Delete: `dd`, `dw`, `diw`, `daw` |
+| `s` | Change character |
 | `tab` / `shift+tab` | Next / previous section |
-| `ctrl+o` or `esc` | Command mode |
+| `ctrl+o` or `esc` | Normal mode |
+| `1` / `2` / `3` | Header / payload / signature (normal mode) |
+| `y` | Copy the encoded token (normal mode) |
+| `?` | Help (normal mode) |
+| `:` | Command line: `:sign`, `:audit`, `:token`, `:format`, `:compact`, `:help`, `:q` |
 | `ctrl+s` | Sign the token |
 | `ctrl+y` | Copy the encoded token |
-| `1` / `2` / `3` | Header / payload / signature (command mode) |
-| `f` / `c` | Format / compact the current JSON (command mode) |
-| `a` / `v` / `?` | Audit / full token / help (command mode) |
-| `i` or `enter` | Back to editing (command mode) |
-| `q` | Quit (command mode, or `ctrl+c` anywhere) |
+| `ctrl+c` | Quit from anywhere |
 
-The motions are on by default. `ctrl+i` is the Tab key at the terminal level, so it cannot be distinguished from Tab, and Tab keeps switching sections. `ctrl+h` and `ctrl+k` would otherwise be the textarea's delete aliases; Backspace and Delete still delete. If you would rather have the plain arrow-key editor, start with `jwt tui --no-vim-keys`.
+The motions are on by default. `ctrl+i` is the Tab key at the terminal level, so it cannot be distinguished from Tab, and Tab keeps switching sections. `ctrl+h` and `ctrl+k` would otherwise be the textarea's delete aliases; Backspace and Delete still delete. If you would rather avoid the insert-mode control motions, start with `jwt tui --no-vim-keys`. Normal mode still uses plain `h/j/k/l`, because those are ordinary characters.
 
-`ctrl+o` is the recommended way into command mode because it is a single control key. `esc` works too, but a very fast next keystroke can look like an Alt sequence to the terminal.
+`ctrl+o` is the recommended way into normal mode because it is a single control key. `esc` works too, but a very fast next keystroke can look like an Alt sequence to the terminal. Normal mode keeps a static block cursor on the current character, and `i` or `enter` goes back to editing at that position. App actions moved to the `:` line so `c`, `f`, `s`, `a`, and `v` stay free for editing.
 
-The Signature tab is editable. You can paste a base64url signature produced by another tool. If the header or payload changes after a signature, the status turns `STALE` and copying warns you. `ctrl+s` re-signs HMAC tokens with the secret you enter. Asymmetric signing is not in this build, so RS, PS, ES, and EdDSA tokens can still be edited, audited, and copied, but their signature will be marked stale until you paste or generate a new one.
+In insert mode, the JSON editors auto-close quotes, braces, brackets, and parentheses, leaving the cursor between the pair. Typing the closing character again steps over it. The inspector card also explains the key on the cursor line, or the nearest key above a bare value line, so `alg`, `exp`, `aud`, `kid`, and custom claims are documented while you move.
 
-The editor never rewrites a token silently. Untouched panes keep their original base64 segments, and edited panes encode the exact text on screen, including whitespace and duplicate keys. That matters when you are testing how different parsers treat the same token. The editor shows pretty JSON, but the token panel is the real bytes.
+The Signature tab is editable. You can paste a base64url signature produced by another tool. If the header or payload changes after a signature, the status turns `STALE` and copying warns you. `ctrl+s` or `:sign` re-signs HMAC tokens with the secret you enter. Asymmetric signing is not in this build, so RS, PS, ES, and EdDSA tokens can still be edited, audited, and copied, but their signature will be marked stale until you paste or generate a new one.
 
-Copy uses OSC 52, so it works over SSH in terminals that support it. Secrets and tokens stay in memory. Nothing is written to disk and nothing is sent over the network. Use `--theme auto|dark|light` if the terminal detects the background wrong, `--no-color` for a plain UI, and `--no-vim-keys` to turn off the `ctrl+h/j/k/l` motions.
+The editor never rewrites a token silently. Untouched panes keep their original base64 segments, and edited panes encode the exact text on screen, including whitespace and duplicate keys. That matters when you are testing how different parsers treat the same token. The editor shows pretty JSON, but the inspector token is the real bytes.
+
+Copy uses OSC 52, so it works over SSH in terminals that support it. Secrets and tokens stay in memory. Nothing is written to disk and nothing is sent over the network. Use `--theme auto|dark|light` if the terminal detects the background wrong, `--no-color` for a plain UI, and `--no-vim-keys` to turn off the insert-mode `ctrl+h/j/k/l` motions.
 
 The TUI is built with Bubble Tea, Bubbles, and Lip Gloss. They are pinned to versions that keep the project's Go 1.21 minimum. The core decode, audit, and verify paths do not change.
 

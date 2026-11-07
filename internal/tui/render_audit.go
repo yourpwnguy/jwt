@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/yourpwnguy/jwt/v2/internal/audit"
 )
@@ -29,6 +30,16 @@ func (m model) sortedFindings() []audit.Finding {
 	return out
 }
 
+func (m model) auditColor() lipgloss.TerminalColor {
+	if !m.auditOK {
+		return m.theme.warning
+	}
+	if m.report.FailedCount() > 0 {
+		return m.theme.danger
+	}
+	return m.theme.success
+}
+
 func (m model) auditSummary() string {
 	if !m.auditOK {
 		return "paused"
@@ -40,14 +51,15 @@ func (m model) auditSummary() string {
 	return fmt.Sprintf("%d issue%s", failed, plural(failed))
 }
 
-func (m model) auditColor() lipgloss.TerminalColor {
+func (m model) auditHeader() string {
+	label := m.theme.bold(m.auditColor()).Render("AUDIT")
+	sym := "✓"
 	if !m.auditOK {
-		return m.theme.warning
+		sym = "!"
+	} else if m.report.FailedCount() > 0 {
+		sym = "✗"
 	}
-	if m.report.FailedCount() > 0 {
-		return m.theme.danger
-	}
-	return m.theme.success
+	return label + "  " + m.theme.fg(m.auditColor()).Render(sym+" "+m.auditSummary())
 }
 
 func (m model) severityColor(f audit.Finding) lipgloss.TerminalColor {
@@ -74,15 +86,108 @@ func (m model) severitySymbol(f audit.Finding) string {
 	return "!"
 }
 
-func (m model) severityChip(f audit.Finding) string {
-	fill := fillSignature
-	switch f.Severity {
-	case audit.SeverityCritical, audit.SeverityHigh:
-		fill = fillDanger
-	case audit.SeverityMedium:
-		fill = fillWarning
+func (m model) severityLabel(f audit.Finding) string {
+	return m.theme.bold(m.severityColor(f)).Render(strings.ToUpper(string(f.Severity)))
+}
+
+// auditDots is one dot per rule. It stays because it is the fastest
+// way to see that a token was actually checked; it is just colored
+// text now, with no filled background.
+func (m model) auditDots(width int) string {
+	findings := m.report.Findings
+	if len(findings) == 0 {
+		return ""
 	}
-	return m.theme.chip(strings.ToUpper(string(f.Severity)), fill)
+	sep := ""
+	if width >= 2*len(findings)-1 {
+		sep = " "
+	}
+	parts := make([]string, 0, len(findings))
+	for _, f := range findings {
+		parts = append(parts, m.theme.fg(m.severityColor(f)).Render("●"))
+	}
+	return strings.Join(parts, sep)
+}
+
+// renderAuditInline fits the summary and as many findings as maxLines
+// allows. The inspector card decides how much vertical room the audit
+// gets, so the full report stays behind the audit command.
+func (m model) renderAuditInline(width, maxLines int) []string {
+	if maxLines <= 0 {
+		return nil
+	}
+	lines := []string{m.auditHeader()}
+	if !m.auditOK {
+		lines = append(lines, m.theme.mutedStyle().Render("fix the JSON to run the checks"))
+		return fitLines(lines, width, maxLines)
+	}
+
+	findings := m.sortedFindings()
+	if m.report.FailedCount() == 0 {
+		lines = append(lines, m.theme.fg(m.theme.success).Render("✓ all checks passed"))
+		ids := findingIDs(findings)
+		for _, line := range wrapPlain(ids, width) {
+			lines = append(lines, m.theme.mutedStyle().Render(line))
+		}
+		return fitLines(lines, width, maxLines)
+	}
+
+	for _, f := range findings {
+		if f.Pass {
+			continue
+		}
+		if len(lines) >= maxLines {
+			break
+		}
+		lines = append(lines, m.findingHeadline(f, width))
+		detail := wrapPlain(f.Detail, max(4, width-2))
+		for _, d := range detail {
+			if len(lines) >= maxLines {
+				break
+			}
+			lines = append(lines, m.theme.mutedStyle().Render("  "+d))
+		}
+	}
+
+	passed := len(findings) - m.report.FailedCount()
+	if passed > 0 && len(lines) < maxLines {
+		lines = append(lines, m.theme.fg(m.theme.success).Render(fmt.Sprintf("✓ %d checks passed", passed)))
+		ids := passedIDs(findings)
+		for _, line := range wrapPlain(ids, width) {
+			if len(lines) >= maxLines {
+				break
+			}
+			lines = append(lines, m.theme.mutedStyle().Render(line))
+		}
+	}
+	return fitLines(lines, width, maxLines)
+}
+
+func (m model) findingHeadline(f audit.Finding, width int) string {
+	color := m.severityColor(f)
+	sym := m.severitySymbol(f)
+	sev := fmt.Sprintf("%-8s", strings.ToUpper(string(f.Severity)))
+	head := m.theme.bold(color).Render(sym + " " + sev)
+	line := head + " " + m.theme.fg(m.theme.muted).Render(f.ID)
+	return ansi.Truncate(line, width, "…")
+}
+
+func findingIDs(findings []audit.Finding) string {
+	ids := make([]string, 0, len(findings))
+	for _, f := range findings {
+		ids = append(ids, f.ID)
+	}
+	return strings.Join(ids, " · ")
+}
+
+func passedIDs(findings []audit.Finding) string {
+	ids := make([]string, 0, len(findings))
+	for _, f := range findings {
+		if f.Pass {
+			ids = append(ids, f.ID)
+		}
+	}
+	return strings.Join(ids, " · ")
 }
 
 // auditFullContent is the scrollable report. The caller gives it the
@@ -118,7 +223,7 @@ func (m model) auditFullContent(width int) []string {
 		if f.Pass {
 			continue
 		}
-		head := m.severityChip(f) + "  " + m.theme.bold(m.theme.ink).Render(f.ID)
+		head := m.severityLabel(f) + "  " + m.theme.bold(m.theme.header).Render(f.ID)
 		lines = append(lines, head)
 		lines = append(lines, m.theme.mutedStyle().Render("  "+f.Title))
 		for _, detail := range wrapPlain(f.Detail, max(4, width-2)) {
@@ -127,13 +232,13 @@ func (m model) auditFullContent(width int) []string {
 		lines = append(lines, "")
 	}
 
-	lines = append(lines, m.theme.bold(m.theme.ink).Render("PASSED"))
-	lines = append(lines, m.rule(width, m.theme.hairline))
+	lines = append(lines, m.theme.bold(m.theme.header).Render("PASSED"))
+	lines = append(lines, m.rule(width))
 	for _, f := range findings {
 		if !f.Pass {
 			continue
 		}
-		line := m.theme.fg(m.theme.success).Render("✓ ") + m.theme.fg(m.theme.ink).Render(f.ID) +
+		line := m.theme.fg(m.theme.success).Render("✓ ") + m.theme.fg(m.theme.header).Render(f.ID) +
 			m.theme.mutedStyle().Render("  "+f.Title)
 		for _, wrapped := range wrapPlain(line, width) {
 			lines = append(lines, wrapped)

@@ -10,10 +10,6 @@ import (
 // same behavior and differ only in accent color; the signature field is
 // a single line because base64url has no newlines.
 //
-// Text is explicitly inked. The page paints its own canvas, so relying
-// on the terminal's default foreground would break the paper/ink
-// illusion on themes that use an odd default.
-//
 // CharLimit and MaxHeight stay unlimited on purpose. A 16 KB compact
 // segment can pretty-print to more than 16 KB and past 99 lines, and
 // Bubbles would silently truncate the loaded text if those defaults
@@ -30,22 +26,20 @@ func newTextarea(t theme, s section) textarea.Model {
 	ta.MaxHeight = 0
 
 	accent := t.sectionColor(s)
-	ink := lipgloss.NewStyle().Foreground(t.ink)
 	ta.Cursor.Style = lipgloss.NewStyle().Foreground(accent)
-	ta.Cursor.TextStyle = ink
 
 	focused := textarea.Style{
-		Base:             ink,
-		CursorLine:       lipgloss.NewStyle().Background(t.cursorLine(s)).Foreground(t.ink),
+		Base:             lipgloss.NewStyle(),
+		CursorLine:       lipgloss.NewStyle().Background(t.cursorLine(s)),
 		CursorLineNumber: lipgloss.NewStyle().Foreground(accent).Bold(true),
 		EndOfBuffer:      t.mutedStyle(),
 		LineNumber:       t.mutedStyle(),
 		Placeholder:      t.mutedStyle(),
 		Prompt:           t.mutedStyle(),
-		Text:             ink,
+		Text:             lipgloss.NewStyle(),
 	}
 	blurred := focused
-	blurred.CursorLine = lipgloss.NewStyle().Foreground(t.ink)
+	blurred.CursorLine = lipgloss.NewStyle()
 	blurred.CursorLineNumber = t.mutedStyle()
 
 	ta.FocusedStyle = focused
@@ -56,13 +50,13 @@ func newTextarea(t theme, s section) textarea.Model {
 func newSignatureInput(t theme) textinput.Model {
 	ti := textinput.New()
 	ti.Prompt = "› "
-	ti.Placeholder = "paste a signature"
+	ti.Placeholder = "(empty)"
 	ti.CharLimit = 0
 	ti.PromptStyle = t.bold(t.signature)
-	ti.TextStyle = lipgloss.NewStyle().Foreground(t.ink)
+	ti.TextStyle = lipgloss.NewStyle()
 	ti.PlaceholderStyle = t.mutedStyle()
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(t.signature)
-	ti.Cursor.TextStyle = lipgloss.NewStyle().Foreground(t.ink)
+	ti.Cursor.TextStyle = lipgloss.NewStyle()
 	return ti
 }
 
@@ -74,9 +68,23 @@ func newSecretInput(t theme) textinput.Model {
 	ti.EchoMode = textinput.EchoPassword
 	ti.EchoCharacter = '•'
 	ti.PromptStyle = t.bold(t.header)
-	ti.TextStyle = lipgloss.NewStyle().Foreground(t.ink)
+	ti.TextStyle = lipgloss.NewStyle()
 	ti.PlaceholderStyle = t.mutedStyle()
 	ti.Cursor.Style = lipgloss.NewStyle().Foreground(t.header)
-	ti.Cursor.TextStyle = lipgloss.NewStyle().Foreground(t.ink)
+	ti.Cursor.TextStyle = lipgloss.NewStyle()
+	return ti
+}
+
+// newCommandInput is the ":" line. It has the same quiet styling as
+// the other inputs, with the signature accent on the prompt and cursor.
+func newCommandInput(t theme) textinput.Model {
+	ti := textinput.New()
+	ti.Prompt = ":"
+	ti.CharLimit = 0
+	ti.PromptStyle = t.bold(t.signature)
+	ti.TextStyle = lipgloss.NewStyle()
+	ti.PlaceholderStyle = t.mutedStyle()
+	ti.Cursor.Style = lipgloss.NewStyle().Foreground(t.signature)
+	ti.Cursor.TextStyle = lipgloss.NewStyle()
 	return ti
 }

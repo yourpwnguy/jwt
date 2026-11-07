@@ -20,6 +20,7 @@ import (
 // plain text unless the user explicitly reveals it.
 
 func (m *model) startSign() tea.Cmd {
+	m.pending = ""
 	if m.headerErr != nil || m.payloadErr != nil {
 		return m.showToast("fix the JSON first", toastDanger)
 	}
@@ -54,13 +55,12 @@ func (m *model) startSign() tea.Cmd {
 func (m *model) handleSignKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "esc":
-		m.mode = m.signReturn
 		m.signErr = nil
-		if m.mode == modeEdit {
+		if m.signReturn == modeEdit {
+			m.mode = modeEdit
 			return m.focusSection()
 		}
-		m.blurAll()
-		return nil
+		return m.enterCommandMode()
 	case "ctrl+r":
 		m.revealSecret = !m.revealSecret
 		if m.revealSecret {
@@ -109,10 +109,8 @@ func (m *model) submitSign() tea.Cmd {
 	m.refresh()
 
 	toast := m.showToast("signed "+alg, toastSuccess)
-	stamp := m.startStamp()
 	if m.mode == modeEdit {
-		return tea.Batch(toast, m.focusSection(), stamp)
+		return tea.Batch(toast, m.focusSection())
 	}
-	m.blurAll()
-	return tea.Batch(toast, stamp)
+	return tea.Batch(toast, m.enterCommandMode())
 }

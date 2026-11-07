@@ -1,123 +1,33 @@
 package tui
 
-// view_overlays.go renders the reading pages and the signing sheet.
-// They share the masthead and footer with the main page, so moving into
-// help or audit feels like turning a page, not opening a dialog. The
-// signer is the one true modal: a sheet centered in the body.
-
 import (
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
-func (m model) renderOverlay() string {
-	l := m.layout()
-	lines := make([]string, 0, l.height)
-
-	if l.topPad > 0 {
-		lines = append(lines, "")
-	}
-	lines = append(lines, frame(m.renderMasthead(l.contentW), l.margin, l.contentW))
-	lines = append(lines, frame(m.rule(l.contentW, m.theme.hairline), l.margin, l.contentW))
-	lines = append(lines, frame(m.renderPageTitle(l.contentW), l.margin, l.contentW))
-	lines = append(lines, frame(m.rule(l.contentW, m.theme.hairline), l.margin, l.contentW))
-
-	content := strings.Split(m.overlay.View(), "\n")
-	content = fitAndPad(content, l.contentW, l.overlayH)
-	for _, line := range content {
-		lines = append(lines, frame(line, l.margin, l.contentW))
-	}
-
-	lines = append(lines, frame(m.rule(l.contentW, m.theme.hairline), l.margin, l.contentW))
-	lines = append(lines, frame(m.renderFooter(l.contentW), l.margin, l.contentW))
-	if l.bottomPad > 0 {
-		lines = append(lines, "")
-	}
-	return strings.Join(lines, "\n")
-}
-
-func (m model) renderPageTitle(width int) string {
-	name := "HELP"
-	sub := "KEYS"
-	color := m.theme.signature
-	switch m.mode {
-	case modeAudit:
-		name, sub, color = "AUDIT", "OFFLINE", m.auditColor()
-	case modeToken:
-		name, sub, color = "TOKEN", "EXACT BYTES", m.theme.signature
-	}
-	left := m.theme.bold(color).Render(name) + m.theme.mutedStyle().Render("  /  "+sub)
-	right := m.theme.mutedStyle().Render("ESC CLOSE")
-	return joinLR(left, right, width)
-}
+// view_overlays.go renders the two full-screen treatments: the signing
+// dialog and the scrollable audit/token/help screens. Both are centered
+// and bounded, so a small terminal clips the card instead of the whole
+// layout.
 
 func (m model) renderSign() string {
-	l := m.layout()
-	sheetW := min(68, l.contentW-8)
-	if sheetW < 40 {
-		sheetW = max(30, l.contentW-4)
+	dialogW := min(64, m.width-8)
+	if dialogW < 40 {
+		dialogW = max(30, m.width-4)
 	}
-	// The sheet page has the same fixed chrome as the main page,
-	// minus the tab row: masthead, two rules, and the footer.
-	bodyH := max(3, l.height-l.topPad-l.bottomPad-4-2*l.gap)
-	sheet := m.signSheet(sheetW, bodyH)
-	body := lipgloss.Place(l.contentW, bodyH, lipgloss.Center, lipgloss.Center, sheet)
+	textW := dialogW - 6 // border 2 + horizontal padding 4
 
-	lines := make([]string, 0, l.height)
-	if l.topPad > 0 {
-		lines = append(lines, "")
-	}
-	lines = append(lines, frame(m.renderMasthead(l.contentW), l.margin, l.contentW))
-	lines = append(lines, frame(m.rule(l.contentW, m.theme.hairline), l.margin, l.contentW))
-	if l.gap > 0 {
-		lines = append(lines, "")
-	}
-	for _, line := range strings.Split(body, "\n") {
-		lines = append(lines, frame(line, l.margin, l.contentW))
-	}
-	if l.gap > 0 {
-		lines = append(lines, "")
-	}
-	lines = append(lines, frame(m.rule(l.contentW, m.theme.hairline), l.margin, l.contentW))
-	lines = append(lines, frame(m.renderFooter(l.contentW), l.margin, l.contentW))
-	if l.bottomPad > 0 {
-		lines = append(lines, "")
-	}
-	return strings.Join(lines, "\n")
-}
+	alg := strings.ToUpper(m.alg)
+	title := m.theme.bold(m.theme.header).Render("SIGN TOKEN")
+	head := joinLR(title, m.theme.pill(alg, fillHeader), textW)
 
-// signSheet is a printed form: a letterhead stripe, the secret field,
-// and the three keys that matter. It has no border; the surface wash and
-// the stripe do the framing.
-func (m model) signSheet(sheetW, maxH int) string {
-	textW := sheetW - 6
-	if textW < 20 {
-		textW = 20
+	lines := []string{
+		head,
+		"",
+		m.theme.mutedStyle().Render("HMAC secret"),
+		m.secret.View(),
 	}
-	alg := strings.ToUpper(strings.TrimSpace(m.alg))
-	if alg == "" {
-		alg = "NO ALG"
-	}
-	head := joinLR(
-		m.theme.bold(m.theme.ink).Render("SIGN")+m.theme.mutedStyle().Render("  /  HMAC"),
-		m.theme.bold(m.theme.header).Render(alg),
-		textW,
-	)
-
-	lines := []string{head, ""}
-	if maxH >= 12 {
-		for _, line := range wrapPlain("A secret, or @path to a file. It stays in memory and never leaves this process.", textW) {
-			lines = append(lines, m.theme.mutedStyle().Render(line))
-		}
-		lines = append(lines, "")
-	}
-
-	lines = append(lines, m.theme.mutedStyle().Render("SECRET"))
-	secret := m.secret
-	secret.Width = max(8, textW-4)
-	lines = append(lines, padLine(secret.View(), textW))
-
 	if m.revealSecret {
 		lines = append(lines, m.theme.fg(m.theme.warning).Render("secret is visible"))
 	}
@@ -126,32 +36,60 @@ func (m model) signSheet(sheetW, maxH int) string {
 			lines = append(lines, m.theme.fg(m.theme.danger).Render(line))
 		}
 	}
-
 	lines = append(lines, "")
-	var hints string
-	if textW >= 46 {
-		hints = m.theme.keycap("enter") + " " + m.theme.mutedStyle().Render("sign") + "   " +
-			m.theme.keycap("ctrl+r") + " " + m.theme.mutedStyle().Render("reveal") + "   " +
-			m.theme.keycap("esc") + " " + m.theme.mutedStyle().Render("cancel")
-	} else {
-		// The footer already spells out the actions. On a narrow sheet
-		// the keys alone are enough, and they fit without an ellipsis.
-		hints = m.theme.keycap("enter") + "  " + m.theme.keycap("ctrl+r") + "  " + m.theme.keycap("esc")
+	for _, line := range wrapPlain("The signature is recomputed over the exact header and payload bytes. The secret stays in memory only.", textW) {
+		lines = append(lines, m.theme.mutedStyle().Render(line))
 	}
-	lines = append(lines, padLine(hints, textW))
+	lines = append(lines,
+		"",
+		m.rule(textW),
+		m.theme.mutedStyle().Render("enter sign · ctrl+r reveal · esc cancel"),
+	)
 
-	// A form should not grow taller than the page it sits on. The
-	// finished sheet adds a stripe, a blank row, and a bottom blank.
-	lines = fitLines(lines, textW, max(3, maxH-3))
+	style := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(m.theme.header).
+		Width(dialogW-2).
+		Padding(1, 2)
+	dialog := style.Render(strings.Join(fitLines(lines, textW, len(lines)), "\n"))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, dialog)
+}
 
-	surf := bgSequence(m.theme.surface)
-	strip := bgSequence(fillHeader)
-	blank := paintBG(strings.Repeat(" ", sheetW), surf)
-	top := paintBG(strings.Repeat(" ", sheetW), strip)
-	out := []string{top, blank}
-	for _, line := range lines {
-		out = append(out, paintBG(padLine("   "+line, sheetW), surf))
+func (m model) renderOverlay() string {
+	cardW := max(40, m.width-4)
+	textW := cardW - 6
+	title := "HELP"
+	var fill lipgloss.TerminalColor = fillSignature
+	switch m.mode {
+	case modeAudit:
+		title = "AUDIT"
+		fill = m.auditFill()
+	case modeToken:
+		title = "TOKEN"
 	}
-	out = append(out, blank)
-	return strings.Join(out, "\n")
+	head := joinLR(
+		m.theme.pill(title, fill),
+		m.theme.mutedStyle().Render("esc close"),
+		textW,
+	)
+
+	content := []string{
+		head,
+		"",
+		m.rule(textW),
+	}
+	content = append(content, strings.Split(m.overlay.View(), "\n")...)
+	footer := m.theme.mutedStyle().Render("↑↓ scroll · g/G top/bottom · y copy · esc close")
+	right := ""
+	if m.toast != "" {
+		right = m.theme.fg(m.toastColor()).Render(m.toast)
+	}
+	content = append(content, m.rule(textW), joinLR(footer, right, textW))
+	style := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(m.theme.muted).
+		Width(cardW-2).
+		Padding(1, 2)
+	card := style.Render(strings.Join(fitLines(content, textW, len(content)), "\n"))
+	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, card)
 }

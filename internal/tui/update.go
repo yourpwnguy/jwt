@@ -9,17 +9,13 @@ import (
 // update.go is the keyboard router. Global keys are handled first, then
 // the active mode. Editing keys are forwarded to the focused widget, so
 // typing "q" in the JSON editor inserts q instead of quitting.
+//
+// Normal mode is intentionally close to Neovim: h/j/k/l move, w/b jump
+// by word, 0/$ go to the ends of the line, f{char}/; find, i/a/o/O
+// enter insert mode, and c{motion} changes a range. App actions moved
+// to the ":" line so those letters stay available for editing.
 
 type tickMsg time.Time
-
-const stampFrames = 5
-
-// stampTickMsg drives the short letterpress pulse after signing. It is
-// a one-shot chain, not a permanent animation: when stamp reaches zero
-// no more timers are scheduled.
-type stampTickMsg struct {
-	id int
-}
 
 type copiedMsg struct {
 	err     error
@@ -52,14 +48,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		m.tick(time.Time(msg))
 		return m, tickCmd()
-	case stampTickMsg:
-		if msg.id == m.stampID && m.stamp > 0 {
-			m.stamp--
-			if m.stamp > 0 {
-				return m, stampTick(m.stampID)
-			}
-		}
-		return m, nil
 	case toastClearMsg:
 		if msg.id == m.toastID {
 			m.toast = ""
@@ -73,11 +61,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	default:
 		// Cursor blink and paste messages belong to the focused widget.
-		if m.mode == modeEdit {
+		switch m.mode {
+		case modeEdit:
 			return m, m.updateActive(msg)
-		}
-		if m.mode == modeSign {
+		case modeEx:
+			var cmd tea.Cmd
+			m.command, cmd = m.command.Update(msg)
+			return m, cmd
+		case modeSign:
 			return m, m.updateSecret(msg)
+		case modeAudit, modeHelp, modeToken:
+			var cmd tea.Cmd
+			m.overlay, cmd = m.overlay.Update(msg)
+			return m, cmd
 		}
 		return m, nil
 	}
@@ -86,20 +82,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func tickCmd() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return tickMsg(t)
-	})
-}
-
-// startStamp begins the signature pulse. The id prevents an old timer
-// from shortening a newer stamp when the user signs twice quickly.
-func (m *model) startStamp() tea.Cmd {
-	m.stampID++
-	m.stamp = stampFrames
-	return stampTick(m.stampID)
-}
-
-func stampTick(id int) tea.Cmd {
-	return tea.Tick(55*time.Millisecond, func(time.Time) tea.Msg {
-		return stampTickMsg{id: id}
 	})
 }
 
@@ -114,6 +96,8 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 		return m.handleSignKey(msg)
 	case modeAudit, modeHelp, modeToken:
 		return m.handleOverlayKey(msg)
+	case modeEx:
+		return m.handleExKey(msg)
 	case modeCommand:
 		return m.handleCommandKey(msg)
 	default:
@@ -122,6 +106,13 @@ func (m *model) handleKey(msg tea.KeyMsg) tea.Cmd {
 }
 
 func (m *model) handleEditKey(msg tea.KeyMsg) tea.Cmd {
+	// JSON punctuation gets a partner before the textarea sees it, so
+	// the cursor lands inside the pair. The signature and command
+	// widgets are not JSON and are excluded inside handleAutoPair.
+	if m.handleAutoPair(msg) {
+		return nil
+	}
+
 	// Vim motions are checked before the widget sees the key. The
 	// textarea would otherwise treat ctrl+h as delete-backward and
 	// ctrl+k as delete-after-cursor. Backspace and Delete still cover
@@ -145,9 +136,7 @@ func (m *model) handleEditKey(msg tea.KeyMsg) tea.Cmd {
 
 	switch msg.String() {
 	case "esc", "ctrl+o":
-		m.mode = modeCommand
-		m.blurAll()
-		return nil
+		return m.enterCommandMode()
 	case "tab":
 		return m.nextSection(1)
 	case "shift+tab":
@@ -161,43 +150,136 @@ func (m *model) handleEditKey(msg tea.KeyMsg) tea.Cmd {
 	}
 }
 
+// handleCommandKey is normal mode. The first switch handles the second
+// key of a pending f or c, so "cw" never leaks a literal c into the
+// buffer and "f\"" never inserts a quote.
 func (m *model) handleCommandKey(msg tea.KeyMsg) tea.Cmd {
-	switch msg.String() {
-	case "esc", "i", "enter", "ctrl+o":
+	key := msg.String()
+
+	if m.pending == "g" {
+		m.pending = ""
+		if key == "g" {
+			return m.moveBufferStart()
+		}
+		return nil
+	}
+	if m.pending == "di" {
+		m.pending = ""
+		if key == "w" {
+			return m.deleteInnerWord()
+		}
+		return nil
+	}
+	if m.pending == "da" {
+		m.pending = ""
+		if key == "w" {
+			return m.deleteAroundWord()
+		}
+		return nil
+	}
+	if m.pending == "d" {
+		m.pending = ""
+		switch key {
+		case "d":
+			return m.deleteLine()
+		case "w", "b", "0", "$":
+			return m.deleteMotion(key)
+		case "i":
+			m.pending = "di"
+			return nil
+		case "a":
+			m.pending = "da"
+			return nil
+		}
+		return nil
+	}
+	if m.pending == "f" {
+		m.pending = ""
+		if key == "esc" || len(msg.Runes) == 0 {
+			return nil
+		}
+		m.lastFind = msg.Runes[0]
+		return m.findRune(m.lastFind)
+	}
+	if m.pending == "c" {
+		m.pending = ""
+		switch key {
+		case "w", "b", "0", "$", "c", "h", "l", "j", "k":
+			return m.changeMotion(key)
+		}
+		return nil
+	}
+
+	switch key {
+	case "h", "left":
+		return m.moveLeft()
+	case "l", "right":
+		return m.moveRight()
+	case "j", "down":
+		return m.moveDown()
+	case "k", "up":
+		return m.moveUp()
+	case "w":
+		return m.moveWordForward()
+	case "b":
+		return m.moveWordBackward()
+	case "0":
+		return m.moveLineStart()
+	case "$":
+		return m.moveLineEnd()
+	case "f":
+		m.pending = "f"
+		return nil
+	case ";":
+		return m.repeatFind()
+	case "g":
+		m.pending = "g"
+		return nil
+	case "G":
+		return m.moveBufferEnd()
+	case "d":
+		m.pending = "d"
+		return nil
+	case "i", "enter", "ctrl+o":
 		m.mode = modeEdit
 		return m.focusSection()
+	case "a":
+		return m.appendAtCursor()
+	case "o":
+		return m.openLine(true)
+	case "O":
+		return m.openLine(false)
+	case "s":
+		return m.changeMotion("l")
+	case "c":
+		m.pending = "c"
+		return nil
+	case ":":
+		return m.startEx()
 	case "tab":
 		return m.nextSection(1)
 	case "shift+tab":
 		return m.nextSection(-1)
 	case "1":
 		m.section = sectionHeader
-		m.mode = modeEdit
-		return m.focusSection()
+		return m.focusNormal()
 	case "2":
 		m.section = sectionPayload
-		m.mode = modeEdit
-		return m.focusSection()
+		return m.focusNormal()
 	case "3":
 		m.section = sectionSignature
-		m.mode = modeEdit
-		return m.focusSection()
-	case "s":
+		return m.focusNormal()
+	case "ctrl+s":
 		return m.startSign()
-	case "y":
+	case "ctrl+y", "y":
 		return m.copyCurrent()
-	case "f":
-		return m.formatActive()
-	case "c":
-		return m.compactActive()
-	case "a":
-		return m.openAudit()
-	case "v":
-		return m.openToken()
 	case "?":
 		return m.openHelp()
 	case "q":
 		return tea.Quit
+	case "esc":
+		m.pending = ""
+		return nil
 	}
 	return nil
 }
@@ -206,7 +288,8 @@ func (m *model) nextSection(delta int) tea.Cmd {
 	next := (int(m.section) + delta + 3) % 3
 	m.section = section(next)
 	if m.mode == modeCommand {
-		m.mode = modeEdit
+		m.pending = ""
+		return m.focusNormal()
 	}
 	return m.focusSection()
 }

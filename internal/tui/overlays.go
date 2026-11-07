@@ -8,7 +8,7 @@ import (
 )
 
 // overlays.go opens the full-screen audit, token, and help screens. The
-// overlay always returns to command mode on close, so the user can press
+// overlay always returns to normal mode on close, so the user can press
 // i to edit or q to quit without guessing where they came from.
 
 func (m *model) openAudit() tea.Cmd {
@@ -38,18 +38,23 @@ func (m *model) setOverlay(lines []string) tea.Cmd {
 }
 
 func (m model) overlayWidth() int {
-	return max(20, m.layout().contentW)
+	// The overlay card has a border and two columns of padding on each
+	// side, so the scrollable content is ten columns narrower than the
+	// terminal.
+	return max(20, m.width-10)
 }
 
 func (m model) overlayHeight() int {
-	return max(4, m.layout().overlayH)
+	// Leave room for the card header, rules, footer, border, and
+	// vertical padding. A little more than the original leaves the
+	// compact help sheet fully visible at 120x32.
+	return max(4, m.height-11)
 }
 
 func (m *model) handleOverlayKey(msg tea.KeyMsg) tea.Cmd {
 	switch msg.String() {
 	case "esc", "q":
-		m.mode = modeCommand
-		return nil
+		return m.enterCommandMode()
 	case "a":
 		return m.openAudit()
 	case "v":

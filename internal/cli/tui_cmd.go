@@ -133,14 +133,36 @@ Options:
 
 Keys:
   arrows            move the cursor
-  ctrl+h / ctrl+l   move left / right
-  ctrl+j / ctrl+k   move down / up
+  ctrl+h / ctrl+l   move left / right while editing
+  ctrl+j / ctrl+k   move down / up while editing
   tab / shift+tab   next or previous section
-  ctrl+o            command mode (esc works too)
-                    f format, c compact, a audit, v token, q quit
+  ctrl+o or esc     normal mode
   ctrl+s            sign the token
   ctrl+y            copy the encoded token
   ctrl+c            quit
+
+Normal mode:
+  h / j / k / l     move
+  w / b             next / previous word
+  0 / $             start / end of line
+  f<char> / ;       find / repeat find
+  gg / G            first / last line
+  i / enter         insert at the cursor
+  a                 append after the cursor
+  o / O             open line below / above
+  c{motion}         change: cw cb c$ cc
+  d{motion}         delete: dd dw diw daw
+  s                 change character
+  1 / 2 / 3         header / payload / signature
+  y                 copy the encoded token
+  ?                 help
+  :                 command line
+
+Commands:
+  :sign  :audit  :token  :format  :compact  :help  :q
+
+JSON editors auto-close quotes and brackets. The inspector explains the
+key under the cursor.
 
 ctrl+i is the Tab key on a terminal, so it keeps switching sections.
 `)
