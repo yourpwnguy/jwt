@@ -86,7 +86,7 @@ func Run(ctx context.Context, opts Options) error {
 		lipgloss.SetColorProfile(termenv.Ascii)
 	}
 	if opts.Copy == nil {
-		opts.Copy = func(s string) error { return copyOSC52(out, s) }
+		opts.Copy = func(s string) error { return copyToken(out, s) }
 	}
 
 	m, err := newModel(ctx, opts)

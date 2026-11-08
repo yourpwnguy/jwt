@@ -176,7 +176,7 @@ func newModel(ctx context.Context, opts Options) (model, error) {
 		opts.Now = time.Now
 	}
 	if opts.Copy == nil {
-		opts.Copy = func(s string) error { return copyOSC52(os.Stdout, s) }
+		opts.Copy = func(s string) error { return copyToken(os.Stdout, s) }
 	}
 
 	m := model{

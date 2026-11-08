@@ -1,22 +1,46 @@
 package tui
 
+// clipboard.go copies the token to the real clipboard.
+//
+// The first version used only OSC 52, the terminal clipboard escape.
+// That works over SSH and inside terminals that support it, but it is
+// silently ignored in common local setups. tmux, for example, defaults
+// to set-clipboard=external, so the escape never reaches the system
+// clipboard. The toast said "copied" while nothing had been copied.
+//
+// The strategy now is:
+//   - local session: try a native clipboard command first (wl-copy,
+//     xclip, xsel, pbcopy, or clip), because we can verify it worked
+//   - remote session: try OSC 52 first, because the local clipboard is
+//     behind the terminal, not the remote machine
+//   - either way, fall back to the other path before reporting failure
+//
+// Native commands receive the token on stdin, never as an argument, so
+// the token does not show up in the process list. Each command gets a
+// short timeout so a broken clipboard daemon cannot hang the editor.
+
 import (
+	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// clipboard.go copies through OSC 52, the terminal clipboard escape.
-//
-// Why not xclip or pbcopy? Shelling out fails over SSH, needs an X or
-// Wayland session, and adds platform branches. OSC 52 is handled by the
-// terminal itself, so it works in the same places the TUI does. If a
-// terminal does not support it, the token is still on screen and can be
-// selected by hand.
+const clipboardTimeout = 2 * time.Second
+
+type clipboardCommand struct {
+	name string
+	args []string
+}
+
 func copyOSC52(w io.Writer, token string) error {
 	if w == nil {
 		w = os.Stdout
@@ -30,6 +54,69 @@ func copyOSC52(w io.Writer, token string) error {
 func osc52Sequence(token string) string {
 	enc := base64.StdEncoding.EncodeToString([]byte(token))
 	return fmt.Sprintf("\x1b]52;c;%s\a", enc)
+}
+
+// copyToken is the default copy function. It tries the path that is
+// most likely to work for the session and falls back to the other one.
+func copyToken(w io.Writer, token string) error {
+	if w == nil {
+		w = os.Stdout
+	}
+	if isRemoteSession() {
+		if err := copyOSC52(w, token); err == nil {
+			return nil
+		}
+		return copyNative(token)
+	}
+	if err := copyNative(token); err == nil {
+		return nil
+	}
+	return copyOSC52(w, token)
+}
+
+func isRemoteSession() bool {
+	for _, key := range []string{"SSH_CONNECTION", "SSH_TTY", "MOSH_CONNECTION"} {
+		if os.Getenv(key) != "" {
+			return true
+		}
+	}
+	return false
+}
+
+func copyNative(token string) error {
+	var lastErr error
+	for _, candidate := range nativeClipboardCommands() {
+		if _, err := exec.LookPath(candidate.name); err != nil {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), clipboardTimeout)
+		cmd := exec.CommandContext(ctx, candidate.name, candidate.args...)
+		cmd.Stdin = strings.NewReader(token)
+		err := cmd.Run()
+		cancel()
+		if err == nil {
+			return nil
+		}
+		lastErr = fmt.Errorf("%s: %w", candidate.name, err)
+	}
+	if lastErr == nil {
+		return errors.New("no native clipboard command found")
+	}
+	return lastErr
+}
+
+func nativeClipboardCommands() []clipboardCommand {
+	switch runtime.GOOS {
+	case "darwin":
+		return []clipboardCommand{{name: "pbcopy"}}
+	case "windows":
+		return []clipboardCommand{{name: "clip"}}
+	}
+	return []clipboardCommand{
+		{name: "wl-copy"},
+		{name: "xclip", args: []string{"-selection", "clipboard"}},
+		{name: "xsel", args: []string{"--clipboard", "--input"}},
+	}
 }
 
 // copyCurrent copies the token currently on screen. Warnings are based

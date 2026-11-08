@@ -251,7 +251,7 @@ The Signature tab is editable. You can paste a base64url signature produced by a
 
 The editor never rewrites a token silently. Untouched panes keep their original base64 segments, and edited panes encode the exact text on screen, including whitespace and duplicate keys. That matters when you are testing how different parsers treat the same token. The editor shows pretty JSON, but the inspector token is the real bytes.
 
-Copy uses OSC 52, so it works over SSH in terminals that support it. Secrets and tokens stay in memory. Nothing is written to disk and nothing is sent over the network. Use `--theme auto|dark|light` if the terminal detects the background wrong, `--no-color` for a plain UI, and `--no-vim-keys` to turn off the insert-mode `ctrl+h/j/k/l` motions.
+Copy prefers a native clipboard tool: `wl-copy`, `xclip`, `xsel`, `pbcopy`, or `clip`. Over SSH, or when no native tool is available, it falls back to OSC 52 so the terminal can hand the token to the local clipboard. The token is passed on stdin, not as a process argument. Secrets and tokens stay in memory and are not written to disk. Use `--theme auto|dark|light` if the terminal detects the background wrong, `--no-color` for a plain UI, and `--no-vim-keys` to turn off the insert-mode `ctrl+h/j/k/l` motions.
 
 The TUI is built with Bubble Tea, Bubbles, and Lip Gloss. They are pinned to versions that keep the project's Go 1.21 minimum. The core decode, audit, and verify paths do not change.
 
